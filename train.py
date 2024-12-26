@@ -290,6 +290,19 @@ def save_and_push_model(model, tokenizer, repo_id: str):
         wandb.log({"model_save_error": str(e)})
         return False
 
+def process_dataset_in_batches(dataset, batch_size=100):
+    """Process dataset in batches to manage memory"""
+    processed_data = []
+    for i in range(0, len(dataset), batch_size):
+        batch = dataset[i:min(i + batch_size, len(dataset))]
+        batch_processed = [convert_to_conversation(sample) for sample in batch]
+        processed_data.extend(batch_processed)
+        # Clear some memory
+        if i % 1000 == 0:
+            torch.cuda.empty_cache()
+    return processed_data
+
+
 def main():
     # Set random seed
     set_seed(RANDOM_SEED)
@@ -322,9 +335,14 @@ def main():
     train_size = int(0.8 * total_samples)
     val_size = int(0.1 * total_samples)
     
-    train_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size))
-    val_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size, train_size + val_size))
+    # train_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size))
+    # val_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size, train_size + val_size))
     
+    # Dataset in batches training 
+    train_dataset = process_dataset_in_batches(train_dataset)
+    val_dataset = process_dataset_in_batches(val_dataset)
+
+
     # Convert datasets
     print("Converting dataset format...")
     train_dataset = [convert_to_conversation(sample) for sample in train_dataset]
