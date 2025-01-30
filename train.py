@@ -12,6 +12,10 @@ from typing import Dict, List, Optional, Tuple
 import random
 import numpy as np
 import wandb
+from torchvision import transforms  # Added for data augmentation
+from torchvision.models.detection import fasterrcnn_resnet50_fpn  # Added for using Faster R-CNN
+from torchvision.ops import nms  # Added for Non-Maximum Suppression
+from PIL import Image
 
 # Environment setup
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
@@ -23,6 +27,15 @@ RANDOM_SEED = 3407
 TEST_MODE = False  # Set to False for full training
 TEST_SAMPLES = 20  # Number of samples to use in test mode
 MAX_STEPS = 10    # Maximum training steps in test mode
+
+# Data augmentation transformations
+augmentation_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(10),  # rotate by 10 degrees
+    transforms.RandomResizedCrop(size=(128, 128), scale=(0.8, 1.0)),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.ToTensor()
+])
 
 def set_seed(seed: int) -> None:
     """Set random seeds for reproducibility"""
@@ -53,33 +66,17 @@ def initialize_wandb(test_mode: bool):
         name=run_name,
     )
 
-def initialize_model() -> Tuple[FastVisionModel, any]:
-    """Initialize and configure the vision model with optimized settings"""
+# New function to initialize the Faster R-CNN model
+def initialize_model(num_classes: int) -> torch.nn.Module:
+    """Initialize and configure the Faster R-CNN model"""
     print("Initializing model...")
-    model, tokenizer = FastVisionModel.from_pretrained(
-        "unsloth/Llama-3.2-11B-Vision-Instruct",
-        load_in_4bit=True,
-        use_gradient_checkpointing="unsloth",
-    )
+    model = fasterrcnn_resnet50_fpn(pretrained=True)
     
-    model.config.gradient_checkpointing = True
+    # Replace the classifier with a new one for your specific classes
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    model.roi_heads.box_predictor = torch.nn.Linear(in_features, num_classes)
     
-    model = FastVisionModel.get_peft_model(
-        model,
-        finetune_vision_layers=True,
-        finetune_language_layers=True,
-        finetune_attention_modules=True,
-        finetune_mlp_modules=True,
-        r=8 if TEST_MODE else 32,  # Smaller rank for test mode
-        lora_alpha=16 if TEST_MODE else 32,  # Adjusted alpha for test mode
-        lora_dropout=0.1,
-        bias="none",
-        random_state=RANDOM_SEED,
-        use_rslora=False,
-        loftq_config=None,
-    )
-    
-    return model, tokenizer
+    return model
 
 def prepare_dataset(dataset):
     """Enhanced dataset preparation with comprehensive validation"""
@@ -111,6 +108,13 @@ def prepare_dataset(dataset):
     
     print("Preparing and validating dataset...")
     return dataset.filter(is_valid_sample)
+
+def extract_image_from_bbox(sample: Dict) -> Image:
+    """Extract image from the bounding box coordinates"""
+    image = Image.open(sample['image'])
+    bbox = sample['bbox']
+    extracted_image = image.crop((bbox[0], bbox[1], bbox[2], bbox[3]))
+    return extracted_image
 
 def convert_to_conversation(sample: Dict) -> Dict:
     """Enhanced conversation format with comprehensive button detection instructions"""
@@ -184,6 +188,8 @@ def convert_to_conversation(sample: Dict) -> Dict:
         f"Target Button Text: '{button_text}'"
     ]))
     
+    extracted_image = extract_image_from_bbox(sample)
+    
     return {
         "messages": [
             {
@@ -197,6 +203,7 @@ def convert_to_conversation(sample: Dict) -> Dict:
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": str(sample["bbox"])},
+                    {"type": "image", "image": extracted_image},
                 ],
             },
         ]
@@ -302,6 +309,15 @@ def process_dataset_in_batches(dataset, batch_size=100):
             torch.cuda.empty_cache()
     return processed_data
 
+# New function for post-processing predictions using NMS
+def post_process(predictions, iou_threshold=0.5):
+    """Apply Non-Maximum Suppression (NMS) to refine bbox predictions"""
+    keep = nms(predictions['boxes'], predictions['scores'], iou_threshold)
+    return {
+        'boxes': predictions['boxes'][keep],
+        'scores': predictions['scores'][keep],
+        'labels': predictions['labels'][keep]
+    }
 
 def main():
     # Set random seed
@@ -315,7 +331,8 @@ def main():
     login(token=HF_TOKEN)
     
     # Initialize model and tokenizer
-    model, tokenizer = initialize_model()
+    num_classes = 2  # Background + button
+    model = initialize_model(num_classes)  # Updated to use Faster R-CNN model
     
     # Load and prepare dataset
     print("Loading dataset...")
@@ -339,8 +356,8 @@ def main():
     # val_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size, train_size + val_size))
     
     # Dataset in batches training 
-    train_dataset = process_dataset_in_batches(train_dataset)
-    val_dataset = process_dataset_in_batches(val_dataset)
+    train_dataset = process_dataset_in_batches(cleaned_dataset)
+    val_dataset = process_dataset_in_batches(cleaned_dataset)
 
     # Clear memory before conversion
     del cleaned_dataset
