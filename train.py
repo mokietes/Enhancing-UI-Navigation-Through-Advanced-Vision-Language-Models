@@ -24,7 +24,7 @@ WANDB_PROJECT = "Llama-3.2-11B-finetuned-lora-wave-ui_3"
 RANDOM_SEED = 3407
 
 # Test configuration
-TEST_MODE = False  # Set to False for full training
+TEST_MODE = False  # Set to False for full training.
 TEST_SAMPLES = 20  # Number of samples to use in test mode
 MAX_STEPS = 10    # Maximum training steps in test mode
 
