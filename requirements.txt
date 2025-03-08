@@ -1,0 +1,11 @@
+torch>=2.0.0
+torchvision>=0.15.0
+Pillow>=9.0.0
+matplotlib>=3.5.0
+numpy>=1.21.0
+datasets>=2.10.0
+transformers>=4.30.0
+unsloth>=0.3.0
+wandb>=0.15.0
+trl>=0.7.2
+huggingface-hub>=0.16.0 
