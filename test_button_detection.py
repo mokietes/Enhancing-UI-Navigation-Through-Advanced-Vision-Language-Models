@@ -45,3 +45,15 @@ def calculate_iou(box1: torch.Tensor, box2: torch.Tensor) -> float:
     y1 = max(box1[1], box2[1])
     x2 = min(box1[2], box2[2])
     y2 = min(box1[3], box2[3])
+    
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    
+    union = box1_area + box2_area - intersection
+    return intersection / union if union > 0 else 0
+
+def post_process(predictions: Dict[str, torch.Tensor], confidence_threshold: float = CONFIDENCE_THRESHOLD) -> Tuple[List[List[float]], List[int], List[float]]:
+    boxes = predictions["boxes"].detach().cpu()
+    scores = predictions["scores"].detach().cpu()
+    labels = predictions["labels"].detach().cpu()
