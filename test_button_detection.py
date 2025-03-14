@@ -64,3 +64,9 @@ def post_process(predictions: Dict[str, torch.Tensor], confidence_threshold: flo
     boxes = boxes[mask]
     scores = scores[mask]
     labels = labels[mask]
+    
+    # Apply NMS
+    keep = nms(boxes, scores, iou_threshold=IOU_THRESHOLD)
+    
+    return boxes[keep].tolist(), labels[keep].tolist(), scores[keep].tolist()
+
