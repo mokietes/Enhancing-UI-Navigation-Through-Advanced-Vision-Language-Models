@@ -54,6 +54,13 @@ def calculate_iou(box1: torch.Tensor, box2: torch.Tensor) -> float:
     return intersection / union if union > 0 else 0
 
 def post_process(predictions: Dict[str, torch.Tensor], confidence_threshold: float = CONFIDENCE_THRESHOLD) -> Tuple[List[List[float]], List[int], List[float]]:
+    """Post-process model predictions."""
     boxes = predictions["boxes"].detach().cpu()
     scores = predictions["scores"].detach().cpu()
     labels = predictions["labels"].detach().cpu()
+    
+    # Filter by confidence
+    mask = scores > confidence_threshold
+    boxes = boxes[mask]
+    scores = scores[mask]
+    labels = labels[mask]
