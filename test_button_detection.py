@@ -105,3 +105,15 @@ def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int],
     else:
         metrics["precision"] = 0
         
+    if metrics["true_positives"] + metrics["false_negatives"] > 0:
+        metrics["recall"] = metrics["true_positives"] / (metrics["true_positives"] + metrics["false_negatives"])
+    else:
+        metrics["recall"] = 0
+        
+    # Calculate F1 score
+    if metrics["precision"] + metrics["recall"] > 0:
+        metrics["f1"] = 2 * (metrics["precision"] * metrics["recall"]) / (metrics["precision"] + metrics["recall"])
+    else:
+        metrics["f1"] = 0
+        
+    return metrics
