@@ -93,3 +93,15 @@ def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int],
                 matched_true_boxes.add(i)
                 matched = True
                 break
+        
+        if not matched:
+            metrics["false_positives"] += 1
+    
+    metrics["false_negatives"] = len(true_boxes) - len(matched_true_boxes)
+    
+    # Calculate precision and recall
+    if metrics["true_positives"] + metrics["false_positives"] > 0:
+        metrics["precision"] = metrics["true_positives"] / (metrics["true_positives"] + metrics["false_positives"])
+    else:
+        metrics["precision"] = 0
+        
