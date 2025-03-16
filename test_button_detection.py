@@ -117,3 +117,5 @@ def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int],
         metrics["f1"] = 0
         
     return metrics
+if __name__ == "__main__":
+    main()
