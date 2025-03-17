@@ -16,6 +16,7 @@ from torchvision import transforms  # Added for data augmentation
 from torchvision.models.detection import fasterrcnn_resnet50_fpn  # Added for using Faster R-CNN
 from torchvision.ops import nms  # Added for Non-Maximum Suppression
 from PIL import Image
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
 # Environment setup
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
@@ -30,11 +31,10 @@ MAX_STEPS = 10    # Maximum training steps in test mode
 
 # Data augmentation transformations
 augmentation_transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(10),  # rotate by 10 degrees
-    transforms.RandomResizedCrop(size=(128, 128), scale=(0.8, 1.0)),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2),
-    transforms.ToTensor()
+    transforms.Resize((224, 224)),  # Standard size that preserves aspect ratio
+    transforms.ColorJitter(brightness=0.1, contrast=0.1),  # Subtle color changes
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 def set_seed(seed: int) -> None:
@@ -68,45 +68,61 @@ def initialize_wandb(test_mode: bool):
 
 # New function to initialize the Faster R-CNN model
 def initialize_model(num_classes: int) -> torch.nn.Module:
-    """Initialize and configure the Faster R-CNN model"""
-    print("Initializing model...")
+    """Initialize and configure the Faster R-CNN model with UI-specific configurations"""
+    print("Initializing model with UI-specific configurations...")
+    
+    # Initialize with pretrained weights
     model = fasterrcnn_resnet50_fpn(pretrained=True)
     
-    # Replace the classifier with a new one for your specific classes
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = torch.nn.Linear(in_features, num_classes)
+    # Modify anchor generator for UI-specific sizes and aspect ratios
+    anchor_generator = model.rpn.anchor_generator
+    anchor_generator.sizes = ((16,), (32,), (64,), (128,), (256,))  # UI elements tend to be smaller
+    anchor_generator.aspect_ratios = ((0.5, 1.0, 2.0),) * len(anchor_generator.sizes)  # Common UI element ratios
+    
+    # Adjust RPN parameters
+    model.rpn.nms_thresh = 0.7  # Increase NMS threshold for better overlapping button detection
+    model.rpn.fg_iou_thresh = 0.6  # Increase foreground IoU threshold
+    model.rpn.bg_iou_thresh = 0.3  # Decrease background IoU threshold
+    
+    # Modify ROI heads for better button detection
+    model.roi_heads.box_predictor = FastRCNNPredictor(
+        in_channels=model.roi_heads.box_predictor.cls_score.in_features,
+        num_classes=num_classes
+    )
+    
+    # Adjust ROI pooling size for better feature extraction from UI elements
+    model.roi_heads.box_roi_pool.output_size = (7, 7)
     
     return model
 
 def prepare_dataset(dataset):
-    """Enhanced dataset preparation with comprehensive validation"""
+    """Enhanced dataset preparation with UI-specific validation and preprocessing"""
     def is_valid_sample(sample):
-        # Check required fields
-        required_fields = ['image', 'OCR', 'bbox']
-        if not all(field in sample for field in required_fields):
+        # Previous validation checks
+        if not all(field in sample for field in ['image', 'OCR', 'bbox']):
             return False
             
-        # Verify bbox format
         bbox = sample['bbox']
         if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
             return False
         if not all(isinstance(coord, (int, float)) for coord in bbox):
             return False
             
-        # Verify OCR text
-        if not isinstance(sample['OCR'], str) or len(sample['OCR'].strip()) == 0:
-            return False
-            
-        # Verify resolution if available
+        # Additional UI-specific validation
         if 'resolution' in sample and sample['resolution']:
-            if not isinstance(sample['resolution'], (list, tuple)) or len(sample['resolution']) != 2:
+            width, height = sample['resolution']
+            # Check if bbox is within image bounds
+            if not (0 <= bbox[0] <= width and 0 <= bbox[2] <= width and
+                   0 <= bbox[1] <= height and 0 <= bbox[3] <= height):
                 return False
-            if not all(isinstance(dim, (int, float)) for dim in sample['resolution']):
+            
+            # Check minimum button size (at least 10x10 pixels)
+            if (bbox[2] - bbox[0]) < 10 or (bbox[3] - bbox[1]) < 10:
                 return False
                 
         return True
     
-    print("Preparing and validating dataset...")
+    print("Preparing and validating dataset with UI-specific criteria...")
     return dataset.filter(is_valid_sample)
 
 def extract_image_from_bbox(sample: Dict) -> Image:
@@ -210,14 +226,14 @@ def convert_to_conversation(sample: Dict) -> Dict:
     }
 
 def create_training_config(output_dir: str) -> SFTConfig:
-    """Create optimized training configuration"""
+    """Create optimized training configuration for UI element detection"""
     if TEST_MODE:
         return SFTConfig(
-            per_device_train_batch_size=2,  # Smaller batch size for testing
+            per_device_train_batch_size=2,
             gradient_accumulation_steps=1,
             max_steps=MAX_STEPS,
-            learning_rate=5e-4,
-            warmup_ratio=0.05,
+            learning_rate=1e-4,  # Reduced learning rate for better convergence
+            warmup_ratio=0.1,
             bf16=True,
             optim="adamw_8bit",
             logging_steps=1,
@@ -234,15 +250,15 @@ def create_training_config(output_dir: str) -> SFTConfig:
         )
     else:
         return SFTConfig(
-            per_device_train_batch_size=8,
-            gradient_accumulation_steps=2,
-            num_train_epochs=3,
-            learning_rate=1e-4,
+            per_device_train_batch_size=4,  # Reduced batch size for better gradient updates
+            gradient_accumulation_steps=4,  # Increased for effective larger batch
+            num_train_epochs=5,  # Increased epochs for better learning
+            learning_rate=5e-5,  # Reduced learning rate
             warmup_ratio=0.1,
             bf16=True,
             optim="adamw_torch_fused",
-            weight_decay=0.05,
-            lr_scheduler_type="cosine",
+            weight_decay=0.01,  # Reduced weight decay
+            lr_scheduler_type="cosine_with_restarts",  # Changed to cosine with restarts
             logging_steps=20,
             save_steps=500,
             eval_steps=100,
@@ -310,13 +326,31 @@ def process_dataset_in_batches(dataset, batch_size=100):
     return processed_data
 
 # New function for post-processing predictions using NMS
-def post_process(predictions, iou_threshold=0.5):
-    """Apply Non-Maximum Suppression (NMS) to refine bbox predictions"""
-    keep = nms(predictions['boxes'], predictions['scores'], iou_threshold)
+def post_process(predictions, iou_threshold=0.7):  # Increased IoU threshold
+    """Apply Non-Maximum Suppression (NMS) to refine bbox predictions with UI-specific thresholds"""
+    # Sort predictions by score
+    scores = predictions['scores']
+    sorted_indices = torch.argsort(scores, descending=True)
+    
+    # Apply NMS with higher threshold for UI elements
+    keep = nms(
+        boxes=predictions['boxes'][sorted_indices],
+        scores=scores[sorted_indices],
+        iou_threshold=iou_threshold
+    )
+    
+    # Filter predictions
+    filtered_boxes = predictions['boxes'][sorted_indices][keep]
+    filtered_scores = scores[sorted_indices][keep]
+    filtered_labels = predictions['labels'][sorted_indices][keep]
+    
+    # Only keep predictions with high confidence
+    confidence_mask = filtered_scores > 0.7  # Higher confidence threshold for UI elements
+    
     return {
-        'boxes': predictions['boxes'][keep],
-        'scores': predictions['scores'][keep],
-        'labels': predictions['labels'][keep]
+        'boxes': filtered_boxes[confidence_mask],
+        'scores': filtered_scores[confidence_mask],
+        'labels': filtered_labels[confidence_mask]
     }
 
 def main():
@@ -330,9 +364,9 @@ def main():
     print("Logging in to Hugging Face...")
     login(token=HF_TOKEN)
     
-    # Initialize model and tokenizer
-    num_classes = 2  # Background + button
-    model = initialize_model(num_classes)  # Updated to use Faster R-CNN model
+    # Initialize model with more classes for different button types
+    num_classes = 5  # Background + [normal, primary, secondary, disabled] buttons
+    model = initialize_model(num_classes)
     
     # Load and prepare dataset
     print("Loading dataset...")
