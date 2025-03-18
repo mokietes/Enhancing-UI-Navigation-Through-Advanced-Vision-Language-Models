@@ -357,9 +357,10 @@ def main():
     train_dataset = process_dataset_in_batches(cleaned_dataset)
     val_dataset = process_dataset_in_batches(cleaned_dataset)
 
-    # Clear memory before conversion
-    del cleaned_dataset
+    # Clear memory
+    # del cleaned_dataset
     torch.cuda.empty_cache()
+    gc.collect()
 
     # Convert datasets
     print("Converting dataset format...")
@@ -379,6 +380,7 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         args=training_args,
+        compute_metrics=compute_metrics,
     )
     
     # Train model
