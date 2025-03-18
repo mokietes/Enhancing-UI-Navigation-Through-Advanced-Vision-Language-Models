@@ -12,17 +12,11 @@ from typing import Dict, List, Optional, Tuple
 import random
 import numpy as np
 import wandb
-from torchvision import transforms  # Added for data augmentation
-from torchvision.models.detection import fasterrcnn_resnet50_fpn  # Added for using Faster R-CNN
-from torchvision.ops import nms  # Added for Non-Maximum Suppression
-from PIL import Image
 import gc
 import numpy as np
 
 # Environment setup
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
-HF_TOKEN = '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'
-WANDB_PROJECT = "Llama-3.2-11B-finetuned-lora-wave-ui_3"
 HF_TOKEN = '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'  # Replace with your token
 WANDB_PROJECT = "Llama-3.2-11B-finetuned-full-wave-ui_3"
 RANDOM_SEED = 3407
