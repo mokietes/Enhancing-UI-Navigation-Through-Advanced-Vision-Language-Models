@@ -353,9 +353,11 @@ def main():
     # train_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size))
     # val_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size, train_size + val_size))
     
-    # Dataset in batches training 
-    train_dataset = process_dataset_in_batches(cleaned_dataset)
-    val_dataset = process_dataset_in_batches(cleaned_dataset)
+    # Process datasets in batches
+    print("Processing training dataset...")
+    train_dataset = process_dataset_in_batches(train_dataset)
+    print("Processing validation dataset...")
+    val_dataset = process_dataset_in_batches(val_dataset)
 
     # Clear memory
     # del cleaned_dataset
