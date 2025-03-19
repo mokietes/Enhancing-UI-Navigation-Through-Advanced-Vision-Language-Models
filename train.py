@@ -21,19 +21,14 @@ HF_TOKEN = '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'  # Replace with your token
 WANDB_PROJECT = "Llama-3.2-11B-finetuned-full-wave-ui_3"
 RANDOM_SEED = 3407
 
+# Wandb account
+# Add this near the top of your script, after the imports
+# wandb.login(key="f7bf6b1c9d553e3c69c865dbd823789f9e1b5a5d")  # Replace with your actual API key
+
 # Test configuration
-TEST_MODE = False  # Set to False for full training.
+TEST_MODE = True  # Set to False for full training
 TEST_SAMPLES = 20  # Number of samples to use in test mode
 MAX_STEPS = 10    # Maximum training steps in test mode
-
-# Data augmentation transformations
-augmentation_transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(10),  # rotate by 10 degrees
-    transforms.RandomResizedCrop(size=(128, 128), scale=(0.8, 1.0)),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2),
-    transforms.ToTensor()
-])
 
 def set_seed(seed: int) -> None:
     """Set random seeds for reproducibility"""
@@ -64,22 +59,43 @@ def initialize_wandb(test_mode: bool):
         name=run_name,
     )
 
-# New function to initialize the Faster R-CNN model
-def initialize_model(num_classes: int) -> torch.nn.Module:
-    """Initialize and configure the Faster R-CNN model"""
+def initialize_model() -> Tuple[FastVisionModel, any]:
+    """Initialize and configure the vision model with optimized settings"""
     print("Initializing model...")
-    model = fasterrcnn_resnet50_fpn(pretrained=True)
+    model, tokenizer = FastVisionModel.from_pretrained(
+        "unsloth/Llama-3.2-11B-Vision-Instruct",
+        load_in_4bit=True,
+        use_gradient_checkpointing="unsloth",
+    )
     
-    # Replace the classifier with a new one for your specific classes
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = torch.nn.Linear(in_features, num_classes)
+    # Store the original dtype before quantization
+    original_dtype = model.dtype
     
-    return model
+    model.config.gradient_checkpointing = True
+    
+    model = FastVisionModel.get_peft_model(
+        model,
+        finetune_vision_layers=True,
+        finetune_language_layers=True,
+        finetune_attention_modules=True,
+        finetune_mlp_modules=True,
+        r=8 if TEST_MODE else 32,
+        lora_alpha=16 if TEST_MODE else 32,
+        lora_dropout=0.1,
+        bias="none",
+        random_state=RANDOM_SEED,
+        use_rslora=False,
+        loftq_config=None,
+    )
+    
+    # Store the dtype in the model config for later use
+    model.config.original_dtype = original_dtype
+    
+    return model, tokenizer
 
 def prepare_dataset(dataset):
     """Enhanced dataset preparation with comprehensive validation"""
     def is_valid_sample(sample):
-        # Check required fields
         required_fields = ['image', 'OCR', 'bbox']
         if not all(field in sample for field in required_fields):
             return False
@@ -91,11 +107,9 @@ def prepare_dataset(dataset):
         if not all(isinstance(coord, (int, float)) for coord in bbox):
             return False
             
-        # Verify OCR text
         if not isinstance(sample['OCR'], str) or len(sample['OCR'].strip()) == 0:
             return False
             
-        # Verify resolution if available
         if 'resolution' in sample and sample['resolution']:
             if not isinstance(sample['resolution'], (list, tuple)) or len(sample['resolution']) != 2:
                 return False
@@ -107,16 +121,8 @@ def prepare_dataset(dataset):
     print("Preparing and validating dataset...")
     return dataset.filter(is_valid_sample)
 
-def extract_image_from_bbox(sample: Dict) -> Image:
-    """Extract image from the bounding box coordinates"""
-    image = Image.open(sample['image'])
-    bbox = sample['bbox']
-    extracted_image = image.crop((bbox[0], bbox[1], bbox[2], bbox[3]))
-    return extracted_image
-
 def convert_to_conversation(sample: Dict) -> Dict:
     """Enhanced conversation format with comprehensive button detection instructions"""
-    # Extract all available context
     button_text = sample['OCR']
     button_type = sample.get('type', 'button')
     platform = sample.get('platform', 'UI')
@@ -125,10 +131,8 @@ def convert_to_conversation(sample: Dict) -> Dict:
     dataset_instruction = sample.get('instruction', '')
     expectation = sample.get('expectation', '')
     
-    # Build comprehensive instruction with context blocks
     context_blocks = []
     
-    # Add available context blocks
     if description:
         context_blocks.append(f"Task Context: {description}")
     if dataset_instruction:
@@ -136,14 +140,12 @@ def convert_to_conversation(sample: Dict) -> Dict:
     if expectation:
         context_blocks.append(f"Expected Behavior: {expectation}")
     
-    # Main instruction with detailed guidance
     main_instruction = (
         f"Find the exact bounding box coordinates of the {button_type} containing the text '{button_text}' "
         f"in this {platform} interface image. "
         f"{f'This button {purpose}. ' if purpose else ''}"
     )
     
-    # Visual detection guidelines
     visual_guidelines = (
         "Look for visual elements that indicate this is a button, such as:"
         "\n- Rectangular or rounded shape"
@@ -153,14 +155,12 @@ def convert_to_conversation(sample: Dict) -> Dict:
         "\n- Interactive element styling"
     )
     
-    # Coordinate specification
     coordinate_spec = (
         "\nReturn ONLY the coordinates as [x1, y1, x2, y2] where:"
         "\n- x1, y1: top-left corner coordinates"
         "\n- x2, y2: bottom-right corner coordinates"
     )
     
-    # Quality requirements
     quality_requirements = (
         "\nEnsure the coordinates:"
         "\n1. Capture the entire button including any borders or shadows"
@@ -169,13 +169,11 @@ def convert_to_conversation(sample: Dict) -> Dict:
         "\n4. Include any padding or interactive areas"
     )
     
-    # Add resolution information if available
     resolution_info = ""
     if 'resolution' in sample and sample['resolution']:
         width, height = sample['resolution']
         resolution_info = f"\nImage dimensions: {width}x{height} pixels"
     
-    # Combine all sections
     instruction = "\n\n".join(filter(None, [
         "\n".join(context_blocks),
         main_instruction,
@@ -185,8 +183,6 @@ def convert_to_conversation(sample: Dict) -> Dict:
         resolution_info,
         f"Target Button Text: '{button_text}'"
     ]))
-    
-    extracted_image = extract_image_from_bbox(sample)
     
     return {
         "messages": [
@@ -201,7 +197,6 @@ def convert_to_conversation(sample: Dict) -> Dict:
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": str(sample["bbox"])},
-                    {"type": "image", "image": extracted_image},
                 ],
             },
         ]
@@ -234,7 +229,8 @@ def create_training_config(output_dir: str) -> SFTConfig:
         return SFTConfig(
             per_device_train_batch_size=8,
             gradient_accumulation_steps=2,
-            num_train_epochs=3,
+            num_train_epochs=1,
+            max_steps=None, 
             learning_rate=1e-4,
             warmup_ratio=0.1,
             bf16=True,
@@ -247,8 +243,8 @@ def create_training_config(output_dir: str) -> SFTConfig:
             save_total_limit=3,
             output_dir=output_dir,
             seed=RANDOM_SEED,
-            dataset_num_proc=16,
-            max_seq_length=4096,
+            dataset_num_proc=4, #16
+            max_seq_length=2048,  #4096
             remove_unused_columns=False,
             dataset_text_field="",
             dataset_kwargs={"skip_prepare_dataset": True},
@@ -256,66 +252,123 @@ def create_training_config(output_dir: str) -> SFTConfig:
         )
 
 def save_and_push_model(model, tokenizer, repo_id: str):
-    """Save and push model to hub with proper error handling"""
+    """Save and push the complete merged model to hub"""
     print("Saving model...")
     try:
-        save_dir = "test_lora_model" if TEST_MODE else "lora_model"
-        test_repo_id = f"{repo_id}-test" if TEST_MODE else repo_id
+        print("Disabling gradient checkpointing...")
+        if hasattr(model, "gradient_checkpointing_disable"):
+            model.gradient_checkpointing_disable()
+            
+        # First get the base model
+        print("Loading base model...")
+        base_model, _ = FastVisionModel.from_pretrained(  # Unpack the tuple
+            "unsloth/Llama-3.2-11B-Vision-Instruct",
+            load_in_4bit=False,  # Load in full precision
+            device_map="auto",
+            trust_remote_code=True
+        )
         
-        model.save_pretrained(
-            save_dir,
+        print("Merging model weights...")
+        # Get the state dict of your trained model
+        trained_state_dict = model.state_dict()
+        
+        # Update base model's weights with trained weights
+        for key in trained_state_dict:
+            if key in base_model.state_dict():
+                base_model.state_dict()[key].copy_(trained_state_dict[key])
+        
+        # Save locally first
+        local_save_dir = "local_model_save"
+        print(f"Saving model locally to: {local_save_dir}")
+        base_model.save_pretrained(
+            local_save_dir,
             safe_serialization=True,
-            save_method="merged_16bit"
+            # max_shard_size="4.5GB"
         )
-        tokenizer.save_pretrained(save_dir)
+        tokenizer.save_pretrained(local_save_dir)
         
-        # Log model artifacts to wandb
-        wandb.save(f"{save_dir}/*")
-        
-        print("Pushing tokenizer to hub...")
-        tokenizer.push_to_hub(
-            test_repo_id,
+        print(f"Pushing complete model to hub: {repo_id}")
+        # Push the complete merged model
+        base_model.push_to_hub(
+            repo_id,
             token=HF_TOKEN,
-            safe_serialization=True
+            safe_serialization=True,
+            # max_shard_size="4.5GB",  # This will create ~5GB shards
         )
         
-        print("Pushing model to hub...")
-        model.push_to_hub(
-            test_repo_id,
+        print("Pushing tokenizer...")
+        tokenizer.push_to_hub(
+            repo_id,
             token=HF_TOKEN,
             safe_serialization=True
         )
         
         wandb.log({"model_saved": True})
-        print("Model saved and pushed successfully!")
+        print("Complete model saved locally and pushed successfully!")
         return True
         
     except Exception as e:
         print(f"Error during model save/push: {str(e)}")
         wandb.log({"model_save_error": str(e)})
+        import traceback
+        print(f"Full error traceback:\n{traceback.format_exc()}")
         return False
 
 def process_dataset_in_batches(dataset, batch_size=100):
     """Process dataset in batches to manage memory"""
     processed_data = []
     for i in range(0, len(dataset), batch_size):
+        # Convert Dataset to list of dictionaries
         batch = dataset[i:min(i + batch_size, len(dataset))]
+        if hasattr(batch, 'to_dict'):
+            # If it's a Hugging Face Dataset, convert to dict format
+            batch = [dict(item) for item in batch]
         batch_processed = [convert_to_conversation(sample) for sample in batch]
         processed_data.extend(batch_processed)
-        # Clear some memory
         if i % 1000 == 0:
             torch.cuda.empty_cache()
     return processed_data
 
-# New function for post-processing predictions using NMS
-def post_process(predictions, iou_threshold=0.5):
-    """Apply Non-Maximum Suppression (NMS) to refine bbox predictions"""
-    keep = nms(predictions['boxes'], predictions['scores'], iou_threshold)
+
+
+def compute_iou(box1, box2):
+    """
+    box format: [x1, y1, x2, y2]
+    """
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    inter_area = max(0, x2 - x1) * max(0, y2 - y1)
+    box1_area = max(0, (box1[2] - box1[0])) * max(0, (box1[3] - box1[1]))
+    box2_area = max(0, (box2[2] - box2[0])) * max(0, (box2[3] - box2[1]))
+
+    union_area = box1_area + box2_area - inter_area
+
+    if union_area == 0:
+        return 0.0
+    else:
+        return inter_area / union_area
+
+def compute_metrics(eval_pred):
+    predictions, labels = eval_pred
+
+    # If your model outputs logits, decode them here.
+    # Assume predictions.shape = (batch_size, 4)
+    # and labels.shape = (batch_size, 4)
+
+    ious = []
+    for pred_box, true_box in zip(predictions, labels):
+        iou = compute_iou(pred_box, true_box)
+        ious.append(iou)
+
+    mean_iou = np.mean(ious)
     return {
-        'boxes': predictions['boxes'][keep],
-        'scores': predictions['scores'][keep],
-        'labels': predictions['labels'][keep]
+        "mean_iou": mean_iou
     }
+
+
 
 def main():
     # Set random seed
@@ -329,29 +382,59 @@ def main():
     login(token=HF_TOKEN)
     
     # Initialize model and tokenizer
-    num_classes = 2  # Background + button
-    model = initialize_model(num_classes)  # Updated to use Faster R-CNN model
+    model, tokenizer = initialize_model()
     
     # Load and prepare dataset
     print("Loading dataset...")
-    dataset = load_dataset("miketes/wave-ui_2")
-    cleaned_dataset = prepare_dataset(dataset["train"])
+    dataset = load_dataset("agentsea/wave-ui")
     
-    # Handle test mode dataset size
+    # cleaned_dataset = prepare_dataset(dataset["train"])
+    
+    # if TEST_MODE:
+    #     print(f"Selecting {TEST_SAMPLES} samples for testing...")
+    #     cleaned_dataset = cleaned_dataset.select(range(min(TEST_SAMPLES, len(cleaned_dataset))))
+    
+    # wandb.log({"dataset_size": len(cleaned_dataset)})
+    
+    # print("Splitting dataset...")
+    # total_samples = len(cleaned_dataset)
+    # train_size = int(0.8 * total_samples)
+    # val_size = int(0.1 * total_samples)
+    
+    # cleaned_dataset_list = [dict(item) for item in cleaned_dataset]
+    
+    # train_dataset = cleaned_dataset_list[:train_size]
+    # val_dataset = cleaned_dataset_list[train_size:train_size + val_size]
+
+    # /////
+    # Prepare and load already-split dataset
+    print("Loading and preparing dataset splits...")
+    
+    train_dataset = prepare_dataset(dataset["train"])
+    val_dataset = prepare_dataset(dataset["validation"])
+    test_dataset = prepare_dataset(dataset["test"])
+    
+    # Optional test mode — limit dataset size for fast iteration
     if TEST_MODE:
         print(f"Selecting {TEST_SAMPLES} samples for testing...")
-        cleaned_dataset = cleaned_dataset.select(range(min(TEST_SAMPLES, len(cleaned_dataset))))
+        train_dataset = train_dataset.select(range(min(TEST_SAMPLES, len(train_dataset))))
+        val_dataset = val_dataset.select(range(min(TEST_SAMPLES, len(val_dataset))))
+        test_dataset = test_dataset.select(range(min(TEST_SAMPLES, len(test_dataset))))
     
-    wandb.log({"dataset_size": len(cleaned_dataset)})
+    # Log dataset sizes to wandb
+    wandb.log({
+        "train_dataset_size": len(train_dataset),
+        "val_dataset_size": len(val_dataset),
+        "test_dataset_size": len(test_dataset)
+    })
     
-    # Split dataset
-    print("Splitting dataset...")
-    total_samples = len(cleaned_dataset)
-    train_size = int(0.8 * total_samples)
-    val_size = int(0.1 * total_samples)
-    
-    # train_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size))
-    # val_dataset = cleaned_dataset.shuffle(seed=RANDOM_SEED).select(range(train_size, train_size + val_size))
+    # Convert to list of dictionaries (for compatibility with custom processing functions)
+    train_dataset = [dict(item) for item in train_dataset]
+    val_dataset = [dict(item) for item in val_dataset]
+    test_dataset = [dict(item) for item in test_dataset]
+
+    # /////
+
     
     # Process datasets in batches
     print("Processing training dataset...")
@@ -364,11 +447,6 @@ def main():
     torch.cuda.empty_cache()
     gc.collect()
 
-    # Convert datasets
-    print("Converting dataset format...")
-    train_dataset = [convert_to_conversation(sample) for sample in train_dataset]
-    val_dataset = [convert_to_conversation(sample) for sample in val_dataset]
-    
     # Setup training
     print("Setting up training...")
     FastVisionModel.for_training(model)
@@ -390,7 +468,12 @@ def main():
     torch.cuda.empty_cache()
     trainer.train()
     
-    repo_id = "miketes/Llama-3.2-11B-finetuned-lora-wave-ui_3"
+    # Clean up memory before saving
+    print("Cleaning up memory before model saving...")
+    torch.cuda.empty_cache()
+    gc.collect()
+    
+    repo_id = "miketes/Llama-3.2-11B-finetuned-wave-ui_3"
     if TEST_MODE:
         repo_id += "-test"
         
