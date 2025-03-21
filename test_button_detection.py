@@ -18,3 +18,16 @@ np.random.seed(RANDOM_SEED)
 torch.manual_seed(RANDOM_SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(RANDOM_SEED)
+
+# Constants
+BUTTON_TYPES = ["button", "link", "input", "select"]  # Add more types as needed
+IOU_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.5
+
+# Data augmentation transformations specifically for UI elements
+transform = transforms.Compose([
+    transforms.Resize((800, 800)),
+    transforms.Lambda(lambda x: x.convert('RGB') if x.mode == 'RGBA' else x),  # Convert RGBA to RGB
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
