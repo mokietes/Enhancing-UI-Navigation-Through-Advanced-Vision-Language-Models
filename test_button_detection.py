@@ -31,3 +31,11 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
+def initialize_model(num_classes: int) -> torch.nn.Module:
+    """Initialize the Faster R-CNN model with UI-specific configurations."""
+    model = fasterrcnn_resnet50_fpn(pretrained=True)
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    model.roi_heads.box_predictor = torch.nn.Linear(in_features, num_classes)
+    return model
+
