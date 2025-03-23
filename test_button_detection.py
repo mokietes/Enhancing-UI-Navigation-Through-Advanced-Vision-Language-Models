@@ -39,3 +39,9 @@ def initialize_model(num_classes: int) -> torch.nn.Module:
     model.roi_heads.box_predictor = torch.nn.Linear(in_features, num_classes)
     return model
 
+def calculate_iou(box1: torch.Tensor, box2: torch.Tensor) -> float:
+    """Calculate Intersection over Union between two bounding boxes."""
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
