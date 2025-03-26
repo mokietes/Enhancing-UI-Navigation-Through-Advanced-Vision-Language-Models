@@ -57,3 +57,10 @@ def post_process(predictions: Dict[str, torch.Tensor], confidence_threshold: flo
     """Post-process model predictions."""
     boxes = predictions["boxes"].detach().cpu()
     scores = predictions["scores"].detach().cpu()
+    labels = predictions["labels"].detach().cpu()
+    
+    # Filter by confidence
+    mask = scores > confidence_threshold
+    boxes = boxes[mask]
+    scores = scores[mask]
+    labels = labels[mask]
