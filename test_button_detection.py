@@ -78,3 +78,18 @@ def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int],
         "false_positives": 0,
         "false_negatives": 0
     }
+    
+    matched_true_boxes = set()
+    
+    for pred_box, pred_label in zip(pred_boxes, pred_labels):
+        matched = False
+        for i, (true_box, true_label) in enumerate(zip(true_boxes, true_labels)):
+            if i in matched_true_boxes:
+                continue
+                
+            iou = calculate_iou(torch.tensor(pred_box), torch.tensor(true_box))
+            if iou >= IOU_THRESHOLD and pred_label == true_label:
+                metrics["true_positives"] += 1
+                matched_true_boxes.add(i)
+                matched = True
+                break
