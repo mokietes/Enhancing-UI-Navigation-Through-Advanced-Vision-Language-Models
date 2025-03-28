@@ -64,3 +64,17 @@ def post_process(predictions: Dict[str, torch.Tensor], confidence_threshold: flo
     boxes = boxes[mask]
     scores = scores[mask]
     labels = labels[mask]
+    
+    # Apply NMS
+    keep = nms(boxes, scores, iou_threshold=IOU_THRESHOLD)
+    
+    return boxes[keep].tolist(), labels[keep].tolist(), scores[keep].tolist()
+
+def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int], 
+                     true_boxes: List[List[float]], true_labels: List[int]) -> Dict[str, float]:
+    """Calculate detection metrics."""
+    metrics = {
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+    }
