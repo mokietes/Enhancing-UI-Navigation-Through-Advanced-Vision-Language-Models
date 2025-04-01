@@ -118,3 +118,8 @@ def calculate_metrics(pred_boxes: List[List[float]], pred_labels: List[int],
         
     return metrics
 
+def visualize_detection(image: Image.Image, boxes: List[List[float]], labels: List[int], 
+                       scores: List[float], title: str = "Detection Results"):
+    """Visualize detection results."""
+    fig, ax = plt.subplots(1)
+    ax.imshow(image)
