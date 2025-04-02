@@ -123,3 +123,14 @@ def visualize_detection(image: Image.Image, boxes: List[List[float]], labels: Li
     """Visualize detection results."""
     fig, ax = plt.subplots(1)
     ax.imshow(image)
+    
+    for box, label, score in zip(boxes, labels, scores):
+        x1, y1, x2, y2 = box
+        rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False, color='red')
+        ax.add_patch(rect)
+        ax.text(x1, y1, f"{BUTTON_TYPES[label]}: {score:.2f}", 
+                bbox=dict(facecolor='white', alpha=0.8))
+    
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
