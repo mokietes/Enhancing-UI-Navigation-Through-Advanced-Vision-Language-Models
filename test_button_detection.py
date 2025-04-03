@@ -134,3 +134,16 @@ def visualize_detection(image: Image.Image, boxes: List[List[float]], labels: Li
     plt.title(title)
     plt.axis('off')
     plt.show()
+
+def evaluate_model(model: torch.nn.Module, dataset, num_samples: int = 5):
+    """Evaluate model on test samples."""
+    model.eval()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    
+    total_metrics = {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+    }
+    
