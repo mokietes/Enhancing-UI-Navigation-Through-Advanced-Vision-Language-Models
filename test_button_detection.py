@@ -147,3 +147,11 @@ def evaluate_model(model: torch.nn.Module, dataset, num_samples: int = 5):
         "f1": 0
     }
     
+    for i in range(num_samples):
+        sample = dataset[i]
+        image = sample['image']
+        if isinstance(image, str):  # If image is a path
+            image = Image.open(image).convert('RGB')
+        
+        # Prepare image
+        image_tensor = transform(image).unsqueeze(0).to(device)
