@@ -177,3 +177,12 @@ def evaluate_model(model: torch.nn.Module, dataset, num_samples: int = 5):
         # Visualize results
         visualize_detection(image, pred_boxes, pred_labels, pred_scores,
                           f"Sample {i+1} - Precision: {metrics['precision']:.2f}, Recall: {metrics['recall']:.2f}")
+    
+    # Calculate average metrics
+    num_samples = float(num_samples)
+    for key in total_metrics:
+        total_metrics[key] /= num_samples
+        
+    print("\nAverage Metrics:")
+    for key, value in total_metrics.items():
+        print(f"{key.capitalize()}: {value:.2f}")
