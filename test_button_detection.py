@@ -155,3 +155,25 @@ def evaluate_model(model: torch.nn.Module, dataset, num_samples: int = 5):
         
         # Prepare image
         image_tensor = transform(image).unsqueeze(0).to(device)
+        
+        # Get predictions
+        with torch.no_grad():
+            predictions = model(image_tensor)[0]
+        
+        # Post-process predictions
+        pred_boxes, pred_labels, pred_scores = post_process(predictions)
+        
+        # Get ground truth
+        true_boxes = sample['boxes']
+        true_labels = sample['labels']
+        
+        # Calculate metrics
+        metrics = calculate_metrics(pred_boxes, pred_labels, true_boxes, true_labels)
+        
+        # Update total metrics
+        for key in total_metrics:
+            total_metrics[key] += metrics[key]
+        
+        # Visualize results
+        visualize_detection(image, pred_boxes, pred_labels, pred_scores,
+                          f"Sample {i+1} - Precision: {metrics['precision']:.2f}, Recall: {metrics['recall']:.2f}")
