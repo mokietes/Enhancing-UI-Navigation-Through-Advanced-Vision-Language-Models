@@ -28,31 +28,57 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 #1 Conversion instruction
 def convert_to_conversation(sample):
     """
-    Converts a UI element data sample into a multi-modal conversation format
-    for training a vision-language model to predict bounding boxes of text elements.
+    Converts a UI element data sample into a multi-modal instruction format.
+    Includes a global instruction and dynamically composes a detailed instruction with proper sentence structure.
     """
-    
-    resolution = sample.get("resolution", "Unknown Resolution")
-    bbox = sample.get("bbox", "[0, 0, 0, 0]") 
-    ocr_label = sample.get("OCR", "")
-    name = sample.get("name", "Unknown Element")
-    description = sample.get("description", "No description available.")
-    element_type = sample.get("type", "Unknown Type")
-    language = sample.get("language", "Unknown Language")
-    platform = sample.get("platform", "Unknown Platform")
-    purpose = sample.get("purpose", "No specific purpose provided.")
-    expectation = sample.get("expectation", "No expectation specified.")
-    instructions = sample.get("instruction", "No instruction provided.")
+    bbox = sample.get("bbox", "[0, 0, 0, 0]")
+    ocr_label = sample.get("OCR")
+    name = sample.get("name")
+    description = sample.get("description")
+    element_type = sample.get("type")
+    language = sample.get("language")
+    platform = sample.get("platform")
+    purpose = sample.get("purpose")
+    expectation = sample.get("expectation")
+    instructions = sample.get("instruction")
+    resolution = sample.get("resolution")
 
-    instruction = (
-        f"In this user interface image with resolution {resolution}, locate the text element {ocr_label} named {name} used for "
-        f"{description} in {language} language for the purpose of {purpose} which is used for {instructions}. It is expected "
-        f"to make {expectation} in {platform} platform. Determine its precise "
-        f"bounding box coordinates. The coordinates should be formatted as [x1, y1, x2, y2] where:"
-        f"\n- x1, y1 is the top-left corner"
-        f"\n- x2, y2 is the bottom-right corner"
-        f"\nThe box should tightly enclose only this specific text element. Return only the coordinates."
+    # Global instruction
+    global_instruction = (
+        "You are given a user interface screenshot. "
+        "Your task is to identify the target button or text element and return its bounding box "
+        "in the format [x1, y1, x2, y2]. Do not provide any explanation—just the coordinates."
     )
+
+    # Build dynamic instruction in full sentences
+    sentences = []
+
+    if name:
+        sentences.append(f"The element is named '{name}'.")
+    if ocr_label:
+        sentences.append(f"It contains the text label '{ocr_label}'.")
+    if resolution:
+        sentences.append(f"The image resolution is {resolution}.")
+    if description:
+        sentences.append(f"This element is used for {description}.")
+    if language:
+        sentences.append(f"It is presented in {language}.")
+    if purpose:
+        sentences.append(f"The purpose of this element is to {purpose}.")
+    if expectation:
+        sentences.append(f"It is expected to {expectation}.")
+    if platform:
+        sentences.append(f"This UI is part of the {platform} platform.")
+    if instructions:
+        sentences.append(f"Additional instruction context: '{instructions}'.")
+
+    sentences.append(
+        "Return the bounding box coordinates in the format [x1, y1, x2, y2], where:\n"
+        "- x1, y1 is the top-left corner\n"
+        "- x2, y2 is the bottom-right corner"
+    )
+
+    dynamic_instruction = " ".join(sentences)
 
     return {
         "messages": [
@@ -60,7 +86,8 @@ def convert_to_conversation(sample):
                 "role": "user",
                 "content": [
                     {"type": "image", "image": sample["image"]},
-                    {"type": "text", "text": instruction},
+                    {"type": "text", "text": global_instruction},
+                    {"type": "text", "text": dynamic_instruction},
                 ],
             },
             {
@@ -71,6 +98,9 @@ def convert_to_conversation(sample):
             },
         ]
     }
+
+
+
 
 #2 Conversion instruction
 # def convert_to_conversation(sample):
