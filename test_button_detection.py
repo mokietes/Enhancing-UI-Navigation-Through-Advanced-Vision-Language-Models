@@ -186,3 +186,22 @@ def evaluate_model(model: torch.nn.Module, dataset, num_samples: int = 5):
     print("\nAverage Metrics:")
     for key, value in total_metrics.items():
         print(f"{key.capitalize()}: {value:.2f}")
+
+def main():
+    # Initialize model
+    model = initialize_model(len(BUTTON_TYPES))
+    
+    # Load dataset
+    print("Loading dataset...")
+    dataset = load_dataset("miketes/wave-ui_2", split="train")
+    
+    # Split dataset into train and test
+    test_size = min(100, len(dataset))  # Use at most 100 samples for testing
+    test_dataset = dataset.select(range(test_size))
+    
+    # Evaluate model
+    print(f"Evaluating model on {test_size} samples...")
+    evaluate_model(model, test_dataset)
+
+if __name__ == "__main__":
+    main()
