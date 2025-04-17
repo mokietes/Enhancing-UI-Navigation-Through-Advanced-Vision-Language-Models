@@ -43,3 +43,9 @@ def convert_to_conversation(sample):
     instructions = sample.get("instruction")
     resolution = sample.get("resolution")
 
+    # Global instruction
+    global_instruction = (
+        "You are given a user interface screenshot. "
+        "Your task is to identify the target button or text element and return its bounding box "
+        "in the format [x1, y1, x2, y2]. Do not provide any explanation—just the coordinates."
+    )
