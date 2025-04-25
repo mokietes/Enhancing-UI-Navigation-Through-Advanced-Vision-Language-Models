@@ -1,41 +1,35 @@
+# === Import Libraries ===
 import os
 import torch
-from datasets import load_dataset, load_dataset_builder 
-from unsloth import FastVisionModel, is_bf16_supported
-from unsloth.trainer import UnslothVisionDataCollator
-from trl import SFTTrainer, SFTConfig
-from transformers import TrainingArguments, TrainerCallback, TrainerState, TrainerControl
 import wandb
-from evaluate import load
+import ast
 import numpy as np
-from tqdm import tqdm 
-import os
-import traceback
+from tqdm import tqdm
+from datasets import load_dataset
+from transformers import (
+    Trainer, 
+    TrainingArguments,
+    TrainerCallback,
+    AutoProcessor, 
+    AutoModelForCausalLM
+)
 from huggingface_hub import HfApi
+import torch.nn.functional as F
+from torch.autograd import Variable
 
-HF_TOKEN = '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'  # for hugging face.
-WANDB_PROJECT = "Llama-3.2-11B-finetuned-main"
-
-# Initialize Weights & Biases
-wandb.init(project=WANDB_PROJECT)
-
-
-# Adjust CUDA memory configuration to avoid fragmentation
-
+# === Environment Setup ===
+os.environ['WANDB_PROJECT'] = "Llama-3.2-11B-finetuned-SmoothL1"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+HF_TOKEN = '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'
+wandb.init(project=os.environ['WANDB_PROJECT'])
 
-
-#1 Conversion instruction
+# === Data Preprocessing Function ===
 def convert_to_conversation(sample):
-    """
-    Converts a UI element data sample into a multi-modal instruction format.
-    Includes a global instruction and dynamically composes a detailed instruction with proper sentence structure.
-    """
-    bbox = sample.get("bbox", "[0, 0, 0, 0]")
-    ocr_label = sample.get("OCR")
+    bbox = sample.get("bbox", [0, 0, 0, 0])
     name = sample.get("name")
+    ocr_label = sample.get("OCR")
+    resolution = sample.get("resolution")
     description = sample.get("description")
-    element_type = sample.get("type")
     language = sample.get("language")
     platform = sample.get("platform")
     purpose = sample.get("purpose")
