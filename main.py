@@ -50,6 +50,7 @@ def convert_to_conversation(sample):
         "in the format [x1, y1, x2, y2]. Do not provide any explanation—just the coordinates."
     )
 
+
     # Build dynamic instruction in full sentences
     sentences = []
 
