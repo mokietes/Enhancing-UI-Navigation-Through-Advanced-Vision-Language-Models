@@ -164,7 +164,7 @@ trainer = SmoothL1LossTrainer(
     tokenizer=None,  # avoids tokenizer deprecation warning
 )
 
-trainer.train()
+trainer.train(resume_from_checkpoint=True)
 
 # === Save Final Model ===
 def save_and_push_model(model, processor, repo_id: str, token: str):
