@@ -37,6 +37,18 @@ def normalize_bbox(bbox, resolution):
 
 
 # === Data Preprocessing ===
+def convert_to_conversation_rico(sample):
+    bbox_dict = sample.get("target_bounding_box", {})
+    prompt = sample.get("prompt", "")
+
+    # Use normalized bounding box directly
+    xmin = bbox_dict.get("xmin", 0.0)
+    ymin = bbox_dict.get("ymin", 0.0)
+    xmax = bbox_dict.get("xmax", 0.0)
+    ymax = bbox_dict.get("ymax", 0.0)
+
+    # Reorder to match [x1, y1, x2, y2] format
+    norm_bbox = [xmin, ymin, xmax, ymax]
 def convert_to_conversation(sample):
     bbox = sample.get("bbox", [0, 0, 0, 0])
     name = sample.get("name")
