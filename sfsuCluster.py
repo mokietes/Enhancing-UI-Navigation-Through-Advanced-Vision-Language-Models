@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 
 # === Environment Setup ===
-os.environ['WANDB_PROJECT'] = "Llama-3.2-11B-finetuned-waveUI-l1"
+os.environ['WANDB_PROJECT'] = "Llama-3.2-11B-finetuned-rico-CombinedLossTrainer"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 HF_TOKEN = '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'
 wandb.init(project=os.environ['WANDB_PROJECT'])
