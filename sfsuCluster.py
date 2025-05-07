@@ -96,13 +96,6 @@ def convert_to_conversation(sample):
     }
 
 # === Load Dataset ===
-dataset_path = "/Users/923676946/git-repos/Visual-Data-Mining-AI-Model/training/datasets/wave-ui/data"
-dataset = load_dataset("parquet", data_files={
-    "train": os.path.join(dataset_path, "train-*.parquet"),
-    "validation": os.path.join(dataset_path, "validation-*.parquet"),
-})
-train_dataset = dataset["train"].map(convert_to_conversation)
-val_dataset = dataset["validation"].map(convert_to_conversation)
 
 # === Load Model and Processor ===
 model = AutoModelForCausalLM.from_pretrained(
