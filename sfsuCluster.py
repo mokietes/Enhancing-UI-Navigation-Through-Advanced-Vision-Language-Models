@@ -49,6 +49,17 @@ def convert_to_conversation_rico(sample):
 
     # Reorder to match [x1, y1, x2, y2] format
     norm_bbox = [xmin, ymin, xmax, ymax]
+
+    global_instruction = (
+        "You are given a user interface screenshot. Your task is to identify the target button or text element and return its bounding box in the format [x1, y1, x2, y2]. Do not provide any explanation—just the coordinates."
+    )
+
+    return {
+        "input": f"{global_instruction} {prompt}",
+        "bbox": norm_bbox,
+    }
+
+
 def convert_to_conversation(sample):
     bbox = sample.get("bbox", [0, 0, 0, 0])
     name = sample.get("name")
