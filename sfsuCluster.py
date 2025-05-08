@@ -112,6 +112,14 @@ def convert_to_conversation(sample):
 dataset = load_dataset("ivelin/rico_refexp_combined")
 # dataset = dataset.map(convert_to_conversation_rico)
 
+# Access splits
+train_dataset = dataset["train"].select(range(9000)).map(convert_to_conversation_rico)
+val_dataset = dataset["validation"].select(range(1000)).map(convert_to_conversation_rico)
+# train_dataset = dataset["train"]
+# val_dataset = dataset["validation"]
+# test_dataset = dataset["test"]
+
+
 # === Load Model and Processor ===
 model = AutoModelForCausalLM.from_pretrained(
     "unsloth/Llama-3.2-11B-Vision-Instruct",
