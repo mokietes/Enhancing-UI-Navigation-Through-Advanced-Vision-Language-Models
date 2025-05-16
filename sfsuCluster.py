@@ -128,6 +128,7 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
 )
 processor = AutoProcessor.from_pretrained("unsloth/Llama-3.2-11B-Vision-Instruct", trust_remote_code=True)
+
 model.gradient_checkpointing_enable()
 model.config.output_hidden_states = True  # ✅ ensure hidden states will be returned
 
@@ -172,31 +173,32 @@ val_dataset = val_dataset.filter(is_valid_bbox).map(tokenize)
 
 # === Training Arguments ===
 training_args = TrainingArguments(
-    output_dir="./outputs/l1checkpoints",
+    output_dir="./outputs/CombinedLossTrainerricocheckpoints",
     per_device_train_batch_size=8,
     per_device_eval_batch_size=4,
     gradient_accumulation_steps=4,
-    num_train_epochs=1,
     max_steps=-1,
     warmup_steps=200,
+    warmup_ratio=0.1,
     logging_steps=10,
     save_steps=500,
-    eval_steps=250,
+    eval_steps=300,
     save_total_limit=3,
     learning_rate=2e-5,
     weight_decay=0.01,
-    lr_scheduler_type="linear",
+    lr_scheduler_type="cosine",
     fp16=False,
     bf16=True,
     gradient_checkpointing=True,
     report_to="wandb",
-    run_name="llama3-bbox-L1",
+    run_name="llama3-bbox-rico-CombinedLossTrainer",
     no_cuda=not torch.cuda.is_available(),
     dataloader_num_workers=2,
     seed=42,
 
 
-    #evaluation_strategy="steps",  # or "epoch"
+    evaluation_strategy="steps",  # or "epoch"
+    save_strategy="steps",
     
 )
 
@@ -324,16 +326,6 @@ def bbox_ciou(box1, box2, eps=1e-7):
     return diou_term - alpha * v
 
 # # === GIoU Trainer ===
-# class GIoUTrainer(Trainer):
-#     def compute_loss(self, model, inputs, return_outputs=False):
-#         outputs = model(
-#             input_ids=inputs["input_ids"].to(model.device),
-#             attention_mask=inputs["attention_mask"].to(model.device),
-#             output_hidden_states=True
-#         )
-#         last_hidden = outputs.hidden_states[-1]
-#         pred_boxes = model.regression_head(last_hidden)
-#         true_boxes = inputs["labels"].clone().detach().float().to(model.device)
 
 #         giou = bbox_giou(pred_boxes, true_boxes)
 #         loss = 1 - giou.mean()
