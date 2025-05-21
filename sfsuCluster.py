@@ -327,6 +327,22 @@ def bbox_ciou(box1, box2, eps=1e-7):
     return diou_term - alpha * v
 
 # # === GIoU Trainer ===
+class GIoUTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        outputs = model(
+            input_ids=inputs["input_ids"].to(model.device),
+            attention_mask=inputs["attention_mask"].to(model.device),
+            output_hidden_states=True
+        )
+        last_hidden = outputs.hidden_states[-1]
+        pred_boxes = model.regression_head(last_hidden)
+        true_boxes = inputs["labels"].clone().detach().float().to(model.device)
+
+        giou = bbox_giou(pred_boxes, true_boxes)
+        loss = 1 - giou.mean()
+        wandb.log({"train/giou_loss": loss.item(), "mean_giou": giou.mean().item()})
+        return (loss, outputs) if return_outputs else loss
+
 
 #         giou = bbox_giou(pred_boxes, true_boxes)
 #         loss = 1 - giou.mean()
