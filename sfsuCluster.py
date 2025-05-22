@@ -344,10 +344,6 @@ class GIoUTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-#         giou = bbox_giou(pred_boxes, true_boxes)
-#         loss = 1 - giou.mean()
-#         wandb.log({"train/giou_loss": loss.item(), "mean_giou": giou.mean().item()})
-#         return (loss, outputs) if return_outputs else loss
 
 # # === DIoU Trainer ===
 # class DIoUTrainer(Trainer):
