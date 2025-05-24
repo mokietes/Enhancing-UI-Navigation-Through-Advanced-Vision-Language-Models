@@ -162,5 +162,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 
-Your Name - mokietes@sfsu.edu
+mokietes@sfsu.edu
 Project Link: [https://github.com/mokietes/Visual-Data-Mining-AI-Model](https://github.com/mokietes/Visual-Data-Mining-AI-Model)
