@@ -345,6 +345,77 @@ class GIoUTrainer(Trainer):
 
 
 
+
+def combined_bbox_loss(pred_boxes, true_boxes, weight_smooth_l1=0.4, weight_l1=0.3, weight_l2=0.2, weight_giou=0.1, eps=1e-7):
+    """
+    Compute a weighted combination of Smooth L1, L1, L2, and GIoU loss.
+    """
+    # === Smooth L1 ===
+    smooth_l1 = F.smooth_l1_loss(pred_boxes, true_boxes)
+
+    # === L1 ===
+    l1 = F.l1_loss(pred_boxes, true_boxes)
+
+    # === L2 ===
+    l2 = F.mse_loss(pred_boxes, true_boxes)
+
+    # === GIoU ===
+    def bbox_area(box):
+        return (box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1])
+
+    def bbox_iou(box1, box2):
+        inter_x1 = torch.max(box1[:, 0], box2[:, 0])
+        inter_y1 = torch.max(box1[:, 1], box2[:, 1])
+        inter_x2 = torch.min(box1[:, 2], box2[:, 2])
+        inter_y2 = torch.min(box1[:, 3], box2[:, 3])
+        inter_area = (inter_x2 - inter_x1).clamp(0) * (inter_y2 - inter_y1).clamp(0)
+        union_area = bbox_area(box1) + bbox_area(box2) - inter_area
+        return inter_area / (union_area + eps)
+
+    def bbox_giou(box1, box2):
+        iou = bbox_iou(box1, box2)
+        enclose_x1 = torch.min(box1[:, 0], box2[:, 0])
+        enclose_y1 = torch.min(box1[:, 1], box2[:, 1])
+        enclose_x2 = torch.max(box1[:, 2], box2[:, 2])
+        enclose_y2 = torch.max(box1[:, 3], box2[:, 3])
+        enclose_area = (enclose_x2 - enclose_x1) * (enclose_y2 - enclose_y1)
+        return iou - (enclose_area - (bbox_area(box1) + bbox_area(box2) - bbox_iou(box1, box2))) / (enclose_area + eps)
+
+    giou = bbox_giou(pred_boxes, true_boxes)
+    giou_loss = 1 - giou.mean()
+
+    # === Combine Losses ===
+    total_loss = (
+        weight_smooth_l1 * smooth_l1 +
+        weight_l1 * l1 +
+        weight_l2 * l2 +
+        weight_giou * giou_loss
+    )
+
+    return total_loss, {
+        "smooth_l1": smooth_l1.item(),
+        "l1": l1.item(),
+        "l2": l2.item(),
+        "giou_loss": giou_loss.item()
+    }
+class CombinedLossTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        outputs = model(
+            input_ids=inputs["input_ids"].to(model.device),
+            attention_mask=inputs["attention_mask"].to(model.device),
+            output_hidden_states=True
+        )
+        last_hidden = outputs.hidden_states[-1]
+        pred_boxes = model.regression_head(last_hidden)
+        true_boxes = inputs["labels"].clone().detach().float().to(model.device)
+
+        # Use the combined loss function
+        loss, logs = combined_bbox_loss(pred_boxes, true_boxes)
+        wandb.log(logs)
+
+        return (loss, outputs) if return_outputs else loss
+
+
 # # === DIoU Trainer ===
 # class DIoUTrainer(Trainer):
 #     def compute_loss(self, model, inputs, return_outputs=False):
@@ -427,7 +498,7 @@ class GIoUTrainer(Trainer):
 torch.cuda.empty_cache()
 
 # === Trainer ===
-trainer = SmoothL1Trainer(
+trainer = CombinedLossTrainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
@@ -452,6 +523,6 @@ def save_and_push_model(model, processor, repo_id: str, token: str):
         print(f"❌ Failed to push model: {e}")
 
 # Uncomment below to push to hub
-save_and_push_model(model, processor, "Llama-3.2-11B-finetuned-waveUI-l1", HF_TOKEN)
+save_and_push_model(model, processor, "Llama-3.2-11B-finetuned-rico-CombinedLossTrainer", HF_TOKEN)
 
 wandb.finish()
