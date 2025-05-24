@@ -1,166 +1,144 @@
-# Vision Transformer Spatial Reasoning Enhancement
+# Vision-Language Fine-Tuning for UI Element Detection
 
-This repository contains the implementation of Vision Transformer fine-tuning approaches for enhanced spatial reasoning capabilities, including both LoRA and full fine-tuning methodologies.
+This repository contains training pipelines and evaluation scripts for fine-tuning large vision-language models (e.g., LLaMA 3.2 11B Vision) on UI screenshots to predict bounding boxes for target buttons and text elements. The project compares multiple loss functions and training strategies to optimize detection accuracy on datasets like WaveUI and Rico.
 
-## Setup Instructions
+---
+
+## 📁 Project Structure
+
+```
+.
+├── main.py                  # LoRA fine-tuning using FastVisionModel
+├── mainL2.py               # L2 loss-based training with regression head
+├── L1LossTraining.py       # Smooth L1 loss decoding via text token prediction
+├── sfsuCluster.py          # Combined loss trainer with multiple regression losses
+├── mainUpgrade.py          # Enhanced LoRA training with dynamic prompt formatting
+├── modelOutputTest.ipynb   # Notebook for testing model outputs
+├── plottest.py             # Bounding box visualization using PIL
+└── readme.md               # Project documentation
+```
+
+---
+
+## 🛠️ Setup Instructions
 
 ### 1. Environment Setup
 
-#### Local Development
+#### Local
 ```bash
-# Clone the repository
-git clone https://https://github.com/mokietes/Visual-Data-Mining-AI-Model.git
-cd vision-transformer-enhancement
-
-# Create conda environment
+git clone https://github.com/mokietes/Visual-Data-Mining-AI-Model.git
+cd Visual-Data-Mining-AI-Model
 conda env create -f scripts/setup/environment.yml
 conda activate vt-spatial
-
-# Install additional dependencies
 pip install -r scripts/setup/requirements.txt
 ```
 
-#### HPC Cluster Setup
+#### HPC Cluster
 ```bash
-# Load required modules
 module load cuda/11.8
 module load anaconda3/2023.03
-
-# Activate environment
 source scripts/hpc/gpu_activation.sh
 ```
 
-### 2. Dependencies
+---
 
-#### Core Dependencies
+## 📦 Dependencies
+
 - Python 3.8+
 - PyTorch 2.0+
-- transformers
-- unsloth
-- wandb
+- Hugging Face Transformers
+- Unsloth
+- WandB
+- TRL
+- tqdm
 - numpy
 - matplotlib
-- tqdm
 
-#### Additional Tools
-- CUDA 11.8+
-- Jupyter Notebook
-- tensorboard
+---
 
-### 3. Data Preparation
+##  Dataset
 
-#### Dataset Access
+### Load Dataset
 ```python
 from datasets import load_dataset
-
-# Load the dataset
 dataset = load_dataset("miketes/Web-filtered-english-wave-ui-25k")
 ```
 
-#### Data Preprocessing
+### Preprocessing
 ```bash
-# Run data preprocessing script
-python src/data/preprocessing.py --input_path /path/to/data --output_path /path/to/processed
+python src/data/preprocessing.py --input_path /path/to/raw --output_path /path/to/processed
 ```
 
-### 4. Training
+---
 
-#### LoRA Fine-tuning
+##  Training
+
+### A. LoRA Fine-Tuning (`main.py` / `mainUpgrade.py`)
 ```bash
-# Run LoRA training
-python src/training/lora_training.py \
-    --model_path "unsloth/Llama-3.2-11B-Vision-Instruct" \
-    --output_dir "./models/lora" \
-    --batch_size 14 \
-    --learning_rate 5e-4
+python main.py
 ```
 
-#### Full Fine-tuning
+### B. Smooth L1 Loss Training (`L1LossTraining.py`)
 ```bash
-# Run full fine-tuning
-python src/training/full_training.py \
-    --model_path "unsloth/Llama-3.2-11B-Vision-Instruct" \
-    --output_dir "./models/full" \
-    --batch_size 14
+python L1LossTraining.py
 ```
 
-### 5. Evaluation
-
-#### Running Benchmarks
+### C. L2 Loss Training (`mainL2.py`)
 ```bash
-# Run evaluation script
-python src/evaluation/benchmark.py \
-    --model_path "./models/full" \
-    --test_samples 100 \
-    --save_visualizations
+python mainL2.py
 ```
 
-### 6. Results
+### D. Combined Loss with GIoU/L1/L2/SmoothL1 (`sfsuCluster.py`)
+```bash
+python sfsuCluster.py
+```
 
-The evaluation results are saved in the following locations:
-- Metrics: `results/metrics/`
-- Visualizations: `results/visualizations/`
-- Training logs: `results/logs/`
+---
 
-#### Key Metrics
+##  Evaluation & Visualization
+
+### Generate Evaluation Metrics
+```bash
+python src/evaluation/benchmark.py --model_path ./models/full --test_samples 100 --save_visualizations
+```
+
+### Visualize Bounding Box Predictions
+```bash
+python plottest.py
+```
+
+---
+
+##  Metrics
+
 - IoU (Intersection over Union)
-- Pixel-based accuracy
-- Point-specific distances
+- Smooth L1 Loss
+- L2 Loss
+- Pixel-wise bounding box regression error
 
-### 7. HPC Integration
+All metrics are logged to Weights & Biases and optionally visualized using TensorBoard.
 
-#### GPU Node Activation
-```bash
-# Activate GPU node
-sbatch scripts/hpc/gpu_activation.sh
-```
+---
 
-#### Remote Jupyter Setup
-```bash
-# Start remote Jupyter session
-bash scripts/hpc/jupyter_remote.sh
-```
+##  Model Upload
 
-#### Job Chaining
-```bash
-# Submit chained jobs
-bash scripts/hpc/job_chain.sh
-```
+All scripts provide a `save_and_push_model` function for uploading to Hugging Face Hub.
 
-### 8. Monitoring and Visualization
-
-#### WandB Integration
 ```python
-import wandb
-
-# Initialize WandB
-wandb.init(project="llama_full_training")
+save_and_push_model(model, processor, "your-repo-name", HF_TOKEN)
 ```
 
-#### TensorBoard
-```bash
-# Launch TensorBoard
-tensorboard --logdir results/logs
-```
+---
 
-## Contributing
+##  HPC Workflow
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- Remote Jupyter: `bash scripts/hpc/jupyter_remote.sh`
+- Job Scheduling: `sbatch scripts/hpc/job_chain.sh`
 
-## License
+---
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+##  Contact
 
-## Acknowledgments
-
-- Professor Qun Wang for guidance and mentorship
-- HPC facility for computational resources
-
-## Contact
-
-Your Name - mokietes@sfsu.edu
-Project Link: [https://github.com/mokietes/Visual-Data-Mining-AI-Model](https://github.com/mokietes/Visual-Data-Mining-AI-Model)
+**Author:** Mokie Tesfazien  
+**Email:** mokietes@sfsu.edu  
+**Project Repo:** [https://github.com/mokietes/Enhancing-UI-Navigation-Through-Advanced-Vision-Language-Models](https://github.com/mokietes/Enhancing-UI-Navigation-Through-Advanced-Vision-Language-Models)
