@@ -20,7 +20,7 @@ from torch.autograd import Variable
 # === Environment Setup ===
 os.environ['WANDB_PROJECT'] = "Llama-3.2-11B-finetuned-SmoothL1"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-HF_TOKEN = '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'
+HF_TOKEN = ''
 wandb.init(project=os.environ['WANDB_PROJECT'])
 
 # === Data Preprocessing Function ===
