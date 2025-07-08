@@ -35,3 +35,19 @@ def convert_to_conversation(sample):
     purpose = sample.get("purpose")
     expectation = sample.get("expectation")
     instructions = sample.get("instruction")
+
+    global_instruction = (
+        "You are given a user interface screenshot. Your task is to identify the target button or text element and return its bounding box in the format [x1, y1, x2, y2]. Do not provide any explanation—just the coordinates."
+    )
+
+    dynamic_parts = []
+    if name: dynamic_parts.append(f"The element is named '{name}'.")
+    if ocr_label: dynamic_parts.append(f"It contains the text label '{ocr_label}'.")
+    if resolution: dynamic_parts.append(f"The image resolution is {resolution}.")
+    if description: dynamic_parts.append(f"This element is used for {description}.")
+    if language: dynamic_parts.append(f"It is presented in {language}.")
+    if purpose: dynamic_parts.append(f"The purpose of this element is to {purpose}.")
+    if expectation: dynamic_parts.append(f"It is expected to {expectation}.")
+    if platform: dynamic_parts.append(f"This UI is part of the {platform} platform.")
+    if instructions: dynamic_parts.append(f"Additional instruction context: '{instructions}'.")
+    dynamic_parts.append("Return the bounding box coordinates in the format [x1, y1, x2, y2].")
