@@ -64,3 +64,14 @@ dataset = load_dataset("parquet", data_files={
     "validation": os.path.join(dataset_path, "validation-*.parquet"),
 })
 
+train_dataset = dataset["train"].select(range(100)).map(convert_to_conversation)
+val_dataset = dataset["validation"].select(range(200)).map(convert_to_conversation)
+
+# === Load Model and Processor ===
+model = AutoModelForCausalLM.from_pretrained(
+    "unsloth/Llama-3.2-11B-Vision-Instruct",
+    trust_remote_code=True,
+    device_map="auto",
+    torch_dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+)
+processor = AutoProcessor.from_pretrained("unsloth/Llama-3.2-11B-Vision-Instruct", trust_remote_code=True)
