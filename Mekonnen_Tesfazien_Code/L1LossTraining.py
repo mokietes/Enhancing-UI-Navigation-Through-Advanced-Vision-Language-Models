@@ -51,3 +51,16 @@ def convert_to_conversation(sample):
     if platform: dynamic_parts.append(f"This UI is part of the {platform} platform.")
     if instructions: dynamic_parts.append(f"Additional instruction context: '{instructions}'.")
     dynamic_parts.append("Return the bounding box coordinates in the format [x1, y1, x2, y2].")
+
+    return {
+        "input": global_instruction + " " + " ".join(dynamic_parts),
+        "label": str(bbox),
+    }
+
+# === Load Dataset ===
+dataset_path = "/Users/923676946/git-repos/Visual-Data-Mining-AI-Model/training/datasets/wave-ui/data"
+dataset = load_dataset("parquet", data_files={
+    "train": os.path.join(dataset_path, "train-*.parquet"),
+    "validation": os.path.join(dataset_path, "validation-*.parquet"),
+})
+
