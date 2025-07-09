@@ -75,3 +75,17 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
 )
 processor = AutoProcessor.from_pretrained("unsloth/Llama-3.2-11B-Vision-Instruct", trust_remote_code=True)
+
+# === Enable gradient checkpointing to save memory ===
+model.gradient_checkpointing_enable()
+
+# === Tokenize Dataset ===
+def tokenize(example):
+    tokenized = processor(
+        text=example["input"],
+        text_target=example["label"],
+        padding="max_length",
+        truncation=True,
+        max_length=512,
+        return_tensors="pt"
+    )
