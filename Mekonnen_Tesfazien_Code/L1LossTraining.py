@@ -98,3 +98,21 @@ def tokenize(example):
 train_dataset = train_dataset.map(tokenize, remove_columns=["input", "label"])
 val_dataset = val_dataset.map(tokenize, remove_columns=["input", "label"])
 
+# === Training Arguments ===
+training_args = TrainingArguments(
+    output_dir="./outputs/SmoothL1",
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=2,
+    gradient_accumulation_steps=2,
+    num_train_epochs=1,
+    eval_steps=50,
+    save_steps=100,
+    logging_steps=10,
+    save_total_limit=3,
+    learning_rate=2e-5,
+    weight_decay=0.01,
+    lr_scheduler_type="linear",
+    report_to="wandb",
+    run_name="llama3-ui-bbox-SmoothL1",
+    no_cuda=not torch.cuda.is_available(),
+)
