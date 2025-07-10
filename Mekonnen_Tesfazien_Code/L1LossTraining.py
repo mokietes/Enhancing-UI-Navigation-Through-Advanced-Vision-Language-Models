@@ -89,3 +89,12 @@ def tokenize(example):
         max_length=512,
         return_tensors="pt"
     )
+    return {
+        "input_ids": tokenized.input_ids[0],
+        "attention_mask": tokenized.attention_mask[0],
+        "labels": tokenized.labels[0],
+    }
+
+train_dataset = train_dataset.map(tokenize, remove_columns=["input", "label"])
+val_dataset = val_dataset.map(tokenize, remove_columns=["input", "label"])
+
