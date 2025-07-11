@@ -116,3 +116,13 @@ training_args = TrainingArguments(
     run_name="llama3-ui-bbox-SmoothL1",
     no_cuda=not torch.cuda.is_available(),
 )
+
+# === Custom Trainer with Smooth L1 Loss Only ===
+class SmoothL1LossTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        outputs = model(
+            input_ids=inputs["input_ids"].to(model.device),
+            attention_mask=inputs["attention_mask"].to(model.device),
+            labels=inputs["labels"].to(model.device),
+        )
+
