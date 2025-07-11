@@ -126,3 +126,13 @@ class SmoothL1LossTrainer(Trainer):
             labels=inputs["labels"].to(model.device),
         )
 
+        pred_ids = torch.argmax(outputs.logits, dim=-1)
+        decoded_preds = self.decode_bbox(pred_ids)
+        decoded_labels = self.decode_bbox(inputs["labels"])
+
+        smooth_l1 = F.smooth_l1_loss(decoded_preds, decoded_labels)
+        loss = Variable(smooth_l1, requires_grad=True)
+        wandb.log({"smooth_l1_loss": loss.item()})
+
+        return loss if not return_outputs else (loss, outputs)
+
