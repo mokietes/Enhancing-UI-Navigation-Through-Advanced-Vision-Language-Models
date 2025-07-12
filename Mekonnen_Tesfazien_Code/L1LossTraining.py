@@ -136,3 +136,19 @@ class SmoothL1LossTrainer(Trainer):
 
         return loss if not return_outputs else (loss, outputs)
 
+    def decode_bbox(self, token_ids):
+        boxes = []
+        if token_ids.ndim == 1:
+            token_ids = token_ids.unsqueeze(0)
+        for ids in token_ids:
+            text = processor.decode(ids, skip_special_tokens=True)
+            try:
+                box = ast.literal_eval(text)
+                if isinstance(box, list) and len(box) == 4:
+                    boxes.append(torch.tensor(box, dtype=torch.float32, device=self.model.device))
+                else:
+                    boxes.append(torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.model.device))
+            except:
+                boxes.append(torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.model.device))
+        return torch.stack(boxes)
+
