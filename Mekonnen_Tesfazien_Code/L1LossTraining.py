@@ -152,3 +152,15 @@ class SmoothL1LossTrainer(Trainer):
                 boxes.append(torch.tensor([0.0, 0.0, 0.0, 0.0], device=self.model.device))
         return torch.stack(boxes)
 
+# === Clear memory before training ===
+torch.cuda.empty_cache()
+
+# === Trainer ===
+trainer = SmoothL1LossTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    tokenizer=None,  # avoids tokenizer deprecation warning
+)
+
