@@ -164,3 +164,20 @@ trainer = SmoothL1LossTrainer(
     tokenizer=None,  # avoids tokenizer deprecation warning
 )
 
+trainer.train(resume_from_checkpoint=True)
+
+# === Save Final Model ===
+def save_and_push_model(model, processor, repo_id: str, token: str):
+    try:
+        model.save_pretrained(repo_id, safe_serialization=True)
+        processor.save_pretrained(repo_id)
+        model.push_to_hub(repo_id, token=token)
+        processor.push_to_hub(repo_id, token=token)
+        print("✅ Model pushed successfully")
+    except Exception as e:
+        print(f"❌ Failed to push model: {e}")
+
+# Uncomment to save and push
+# save_and_push_model(model, processor, "Llama-3.2-11B-finetuned-waveUI-SmoothL1", HF_TOKEN)
+
+wandb.finish()
