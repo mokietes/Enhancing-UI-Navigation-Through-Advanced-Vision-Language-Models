@@ -12,3 +12,16 @@ from tqdm import tqdm
 import os
 import traceback
 from huggingface_hub import HfApi
+
+HF_TOKEN = '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'  # for hugging face.
+WANDB_PROJECT = "Llama-3.2-11B-finetuned-main"
+
+# Initialize Weights & Biases
+wandb.init(project=WANDB_PROJECT)
+
+
+# Adjust CUDA memory configuration to avoid fragmentation
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+
