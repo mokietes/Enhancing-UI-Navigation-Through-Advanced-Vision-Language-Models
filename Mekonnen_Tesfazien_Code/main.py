@@ -79,3 +79,27 @@ def convert_to_conversation(sample):
         "- x2, y2 is the bottom-right corner"
     )
 
+    dynamic_instruction = " ".join(sentences)
+
+    return {
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": sample["image"]},
+                    {"type": "text", "text": global_instruction},
+                    {"type": "text", "text": dynamic_instruction},
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": bbox},
+                ],
+            },
+        ]
+    }
+
+
+
+
