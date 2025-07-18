@@ -116,3 +116,19 @@ def convert_to_conversation(sample):
 #     expectation = sample.get("expectation", "No expectation specified.")
 #     instructions = sample.get("instruction", "No instruction provided.")
 
+#     instruction = f"""You are given a user interface image with a resolution of {resolution}.
+#     Your task is to locate a text element with the OCR label "{ocr_label}".
+#     Details about this element:
+#     - Name: {name}
+#     - Description: {description}
+#     - Language: {language}
+#     - Purpose: {purpose}
+#     - Instruction Context: {instructions}
+#     - Expected Behavior: {expectation}
+#     - Platform: {platform}
+
+#     Identify the precise bounding box of this text element in the image.
+#     Return the coordinates in the format: [x1, y1, x2, y2], where:
+#     - (x1, y1) is the top-left corner
+#     - (x2, y2) is the bottom-right corner
+
