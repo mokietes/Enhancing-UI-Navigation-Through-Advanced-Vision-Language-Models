@@ -103,3 +103,16 @@ def convert_to_conversation(sample):
 
 
 
+#2 Conversion instruction
+# def convert_to_conversation(sample):
+#     resolution = sample.get("resolution", "Unknown Resolution")
+#     ocr_label = sample.get("OCR", "")
+#     name = sample.get("name", "Unknown Element")
+#     description = sample.get("description", "No description available.")
+#     element_type = sample.get("type", "Unknown Type")
+#     language = sample.get("language", "Unknown Language")
+#     platform = sample.get("platform", "Unknown Platform")
+#     purpose = sample.get("purpose", "No specific purpose provided.")
+#     expectation = sample.get("expectation", "No expectation specified.")
+#     instructions = sample.get("instruction", "No instruction provided.")
+
