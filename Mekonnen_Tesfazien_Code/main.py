@@ -171,3 +171,17 @@ def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf
             save_method="merged_16bit",
         )
 
+        if enable_hf:
+            # Push to Hugging Face Hub
+            api = HfApi()
+            user_info = api.whoami(token=HF_TOKEN)
+            huggingface_user = user_info["name"]
+            print(f"Current Hugging Face user: {huggingface_user}")
+
+            model.push_to_hub_merged(
+                f"{huggingface_user}/{model_name}",
+                tokenizer=tokenizer,
+                save_method="merged_16bit",
+                token=HF_TOKEN,
+            )
+
