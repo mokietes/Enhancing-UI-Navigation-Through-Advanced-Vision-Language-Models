@@ -132,3 +132,26 @@ def convert_to_conversation(sample):
 #     - (x1, y1) is the top-left corner
 #     - (x2, y2) is the bottom-right corner
 
+#     The bounding box must tightly enclose only this specific text element.
+#     Return only the coordinates — no explanation or extra text."""
+
+#         return {
+#             "messages": [
+#                 {
+#                     "role": "user",
+#                     "content": [
+#                         {"type": "image", "image": sample["image"]},
+#                         {"type": "text", "text": instruction},
+#                     ],
+#                 },
+#                 {
+#                     "role": "assistant",
+#                     "content": [
+#                         {"type": "text", "text": sample["bbox"]},
+#                     ],
+#                 },
+#             ]
+#         }
+
+
+
