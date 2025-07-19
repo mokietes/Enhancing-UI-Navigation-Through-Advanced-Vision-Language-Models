@@ -155,3 +155,19 @@ def convert_to_conversation(sample):
 
 
 
+#Saving function
+def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf: bool=True):
+    """
+    Save the fine-tuned quantized model and tokenizer locally and optionally push to Hugging Face Hub with merged 16bit.
+    """
+    try:
+        model_name = f"{repo_id}-Second-Brain-Summarization"
+        print(f"Model name: {model_name}")
+
+        # Save the model and tokenizer locally
+        model.save_pretrained_merged(
+            model_name,
+            tokenizer,
+            save_method="merged_16bit",
+        )
+
