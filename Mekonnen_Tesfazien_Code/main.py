@@ -185,3 +185,18 @@ def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf
                 token=HF_TOKEN,
             )
 
+            print("✅ Model and tokenizer pushed successfully!")
+        else:
+            print("Hugging Face upload disabled. Model saved locally.")
+
+        return True  # <-- Success
+
+    except Exception as e:
+        print("❌ Error while saving or pushing model:")
+        traceback.print_exc()
+        return False  # <-- Failure
+
+    
+
+# Load the dataset
+dataset_path = "/Users/923676946/git-repos/Visual-Data-Mining-AI-Model/training/datasets/wave-ui/data"  
