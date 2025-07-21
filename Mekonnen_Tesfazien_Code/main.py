@@ -200,3 +200,16 @@ def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf
 
 # Load the dataset
 dataset_path = "/Users/923676946/git-repos/Visual-Data-Mining-AI-Model/training/datasets/wave-ui/data"  
+
+# Load the dataset with the new path, specifying the wildcard for all .parquet files
+dataset = load_dataset("parquet", data_files={
+    "train": os.path.join(dataset_path, "train-*.parquet"),  # Wildcard to load all train files
+    "validation": os.path.join(dataset_path, "validation-*.parquet"),  # Wildcard for validation files
+    "test": os.path.join(dataset_path, "test-*.parquet"),  # Wildcard for test files
+})
+
+train_dataset = dataset["train"]
+val_dataset = dataset["validation"]
+test_dataset = dataset["test"]
+
+
