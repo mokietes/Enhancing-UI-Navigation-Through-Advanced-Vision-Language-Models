@@ -213,3 +213,21 @@ val_dataset = dataset["validation"]
 test_dataset = dataset["test"]
 
 
+# Convert the dataset using tqdm progress bar
+print("\nProcessing training dataset...")
+train_dataset = [convert_to_conversation(sample) for sample in tqdm(train_dataset, desc="Processing Train Data", unit="sample")]
+
+print("\nProcessing validation dataset...")
+val_dataset = [convert_to_conversation(sample) for sample in tqdm(val_dataset, desc="Processing Validation Data", unit="sample")]
+
+print("\nProcessing test dataset...")
+# test_dataset = [convert_to_conversation(sample) for sample in tqdm(test_dataset, desc="Processing Test Data", unit="sample")]
+
+
+# Load the model
+model, tokenizer = FastVisionModel.from_pretrained(
+    "unsloth/Llama-3.2-11B-Vision-Instruct",
+    load_in_4bit=True,
+    use_gradient_checkpointing="unsloth",
+)
+
