@@ -247,3 +247,34 @@ model = FastVisionModel.get_peft_model(
     loftq_config=None,
 )
 
+# Training setup
+FastVisionModel.for_training(model)
+
+class SaveCheckpointCallback(TrainerCallback):
+    def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        print(f"Saving checkpoint at step {state.global_step}")
+        model.save_pretrained(f"checkpoint-{state.global_step}")
+        tokenizer.save_pretrained(f"checkpoint-{state.global_step}")
+
+training_args = SFTConfig(
+    per_device_train_batch_size=2,
+    gradient_accumulation_steps=2,
+    
+    warmup_steps=500,
+    # max_steps=500,  # Adjust as needed
+    num_train_epochs=1,
+    learning_rate=2e-5,
+    fp16=not is_bf16_supported(),
+    bf16=is_bf16_supported(),
+    logging_steps=500,
+    optim="adamw_8bit",
+    weight_decay=0.01,
+    lr_scheduler_type="linear",
+    seed=3407,
+    output_dir="./outputs/check",
+    report_to="wandb",
+    remove_unused_columns=False,
+    dataset_text_field="",
+    dataset_kwargs={"skip_prepare_dataset": True},
+    dataset_num_proc=4,
+    max_seq_length=2048,
