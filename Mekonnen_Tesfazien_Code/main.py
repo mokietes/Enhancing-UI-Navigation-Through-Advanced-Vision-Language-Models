@@ -278,3 +278,21 @@ training_args = SFTConfig(
     dataset_kwargs={"skip_prepare_dataset": True},
     dataset_num_proc=4,
     max_seq_length=2048,
+
+    
+    # eval_strategy="steps",
+    # eval_steps=20,
+    
+    #eval
+    fp16_full_eval = True,
+    per_device_eval_batch_size = 4,
+    eval_accumulation_steps = 4,
+    eval_strategy = "steps",
+    eval_steps = 1000,
+
+    
+    save_steps=500,  # Save checkpoint every 100 steps
+    save_total_limit=5, # Only keep the last 5 checkpoints
+    resume_from_checkpoint="./outputs/check",  # Replace XXX with the step number
+)
+
