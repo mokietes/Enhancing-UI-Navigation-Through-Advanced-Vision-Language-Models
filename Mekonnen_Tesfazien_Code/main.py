@@ -315,3 +315,27 @@ class WandBLoggingCallback(TrainerCallback):
         train_loss = kwargs.get("train_loss", 0)
         wandb.log({"train_loss": train_loss})
 
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    data_collator=UnslothVisionDataCollator(model, tokenizer),
+    #train_dataset=converted_dataset,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,  
+    args=training_args,
+    callbacks=[SaveCheckpointCallback(), WandBLoggingCallback()],
+)
+
+torch.cuda.empty_cache()
+torch.cuda.reset_max_memory_allocated()
+
+# Train the model
+#resume_from_checkpoint=True
+trainer.train(resume_from_checkpoint=True)
+
+# Save the final model
+repo_id = "Llama-3.2-11B-finetuned-waveUI"
+
+success = save_and_push_model(model, tokenizer, repo_id, HF_TOKEN)
+
