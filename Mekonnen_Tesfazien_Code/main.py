@@ -296,3 +296,22 @@ training_args = SFTConfig(
     resume_from_checkpoint="./outputs/check",  # Replace XXX with the step number
 )
 
+
+class WandBLoggingCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, **kwargs):
+        # Get eval metrics from the kwargs
+        eval_metrics = kwargs.get("metrics", {})
+        
+        # Extract eval_loss if it exists
+        eval_loss = eval_metrics.get("eval_loss", None)
+        
+        # Log to WandB only if eval_loss is available
+        if eval_loss is not None:
+            epoch = state.epoch
+            wandb.log({"epoch": epoch, "eval_loss": eval_loss})
+        
+    def on_train_end(self, args, state, control, **kwargs):
+        # Log final training loss if available
+        train_loss = kwargs.get("train_loss", 0)
+        wandb.log({"train_loss": train_loss})
+
