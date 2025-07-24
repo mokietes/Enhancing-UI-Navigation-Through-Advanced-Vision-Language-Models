@@ -339,3 +339,10 @@ repo_id = "Llama-3.2-11B-finetuned-waveUI"
 
 success = save_and_push_model(model, tokenizer, repo_id, HF_TOKEN)
 
+if success:
+    print("🎉 Model saved and/or pushed successfully!")
+else:
+    print("⚠️ Model save or push failed.")    
+
+wandb.finish()
+
