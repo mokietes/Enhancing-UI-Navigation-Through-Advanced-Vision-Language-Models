@@ -51,3 +51,28 @@ def convert_to_conversation(sample):
     if instructions: dynamic_parts.append(f"Additional instruction context: '{instructions}'.")
     dynamic_parts.append("Return the bounding box coordinates in the format [x1, y1, x2, y2].")
 
+    return {
+        "input": global_instruction + " " + " ".join(dynamic_parts),
+        "bbox": [float(x) for x in bbox]
+    }
+
+# === Load Dataset ===
+dataset_path = "/Users/923676946/git-repos/Visual-Data-Mining-AI-Model/training/datasets/wave-ui/data"
+dataset = load_dataset("parquet", data_files={
+    "train": os.path.join(dataset_path, "train-*.parquet"),
+    "validation": os.path.join(dataset_path, "validation-*.parquet"),
+})
+train_dataset = dataset["train"].map(convert_to_conversation)
+val_dataset = dataset["validation"].map(convert_to_conversation)
+
+# === Load Model and Processor ===
+model = AutoModelForCausalLM.from_pretrained(
+    "unsloth/Llama-3.2-11B-Vision-Instruct",
+    trust_remote_code=True,
+    device_map="auto",
+    torch_dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+)
+processor = AutoProcessor.from_pretrained("unsloth/Llama-3.2-11B-Vision-Instruct", trust_remote_code=True)
+model.gradient_checkpointing_enable()
+model.config.output_hidden_states = True  # ✅ ensure hidden states will be returned
+
