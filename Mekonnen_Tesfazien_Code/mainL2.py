@@ -76,3 +76,23 @@ processor = AutoProcessor.from_pretrained("unsloth/Llama-3.2-11B-Vision-Instruct
 model.gradient_checkpointing_enable()
 model.config.output_hidden_states = True  # ✅ ensure hidden states will be returned
 
+# === Add Regression Head ===
+class BBoxRegressionHead(nn.Module):
+    def __init__(self, hidden_dim, dropout=0.1):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 4)
+        )
+    def forward(self, last_hidden_state):
+        return self.mlp(last_hidden_state[:, 0, :])  # use CLS token
+
+model.regression_head = BBoxRegressionHead(model.config.hidden_size).to(model.device)
+
+# === Tokenization ===
+def tokenize(example):
+    tokens = processor(
+        text=example["input"],
+        padding="max_length",
