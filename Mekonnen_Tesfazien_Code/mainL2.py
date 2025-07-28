@@ -96,3 +96,20 @@ def tokenize(example):
     tokens = processor(
         text=example["input"],
         padding="max_length",
+        truncation=True,
+        max_length=512,
+        return_tensors="pt"
+    )
+    return {
+        "input_ids": tokens.input_ids[0],
+        "attention_mask": tokens.attention_mask[0],
+        "bbox": example["bbox"]
+    }
+
+def is_valid_bbox(example):
+    bbox = example.get("bbox")
+    return isinstance(bbox, (list, tuple)) and len(bbox) == 4 and all(isinstance(x, (int, float)) for x in bbox)
+
+train_dataset = train_dataset.filter(is_valid_bbox).map(tokenize)
+val_dataset = val_dataset.filter(is_valid_bbox).map(tokenize)
+
