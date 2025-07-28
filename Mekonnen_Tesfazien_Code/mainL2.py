@@ -113,3 +113,83 @@ def is_valid_bbox(example):
 train_dataset = train_dataset.filter(is_valid_bbox).map(tokenize)
 val_dataset = val_dataset.filter(is_valid_bbox).map(tokenize)
 
+# === Training Arguments ===
+training_args = TrainingArguments(
+    output_dir="./outputs/L2checkpoints",
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=4,
+    gradient_accumulation_steps=4,
+    num_train_epochs=1,
+    max_steps=-1,
+    warmup_steps=200,
+    logging_steps=10,
+    save_steps=1000,
+    eval_steps=500,
+    save_total_limit=2,
+    learning_rate=2e-5,
+    weight_decay=0.01,
+    lr_scheduler_type="linear",
+    fp16=False,
+    bf16=True,
+    gradient_checkpointing=True,
+    report_to="wandb",
+    run_name="llama3-bbox-l2",
+    no_cuda=not torch.cuda.is_available(),
+    dataloader_num_workers=2,
+    seed=42
+)
+
+#eval metric
+def compute_metrics(eval_pred):
+    predictions, labels = eval_pred
+    return {
+        "eval_loss": F.mse_loss(torch.tensor(predictions), torch.tensor(labels)).item()
+    }
+# === Custom Trainer ===
+class DirectBBoxL2Trainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        outputs = model(
+            input_ids=inputs["input_ids"].to(model.device),
+            attention_mask=inputs["attention_mask"].to(model.device),
+            output_hidden_states=True
+        )
+        last_hidden = outputs.hidden_states[-1]
+        pred_boxes = model.regression_head(last_hidden)
+
+        try:
+            true_boxes = torch.tensor(inputs["bbox"], dtype=torch.float32).to(model.device)
+        except Exception as e:
+            wandb.log({"malformed_bbox_text": str(inputs.get("bbox", "missing"))})
+            true_boxes = torch.zeros(pred_boxes.shape, device=model.device)
+
+        l2 = F.mse_loss(pred_boxes, true_boxes)
+        wandb.log({"l2_loss": l2.item()})
+        return (l2, outputs) if return_outputs else l2
+
+# === Clear memory before training ===
+torch.cuda.empty_cache()
+
+# === Trainer ===
+trainer = DirectBBoxL2Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    tokenizer=None,
+    data_collator=default_data_collator,
+    compute_metrics=compute_metrics
+)
+
+trainer.train()
+
+# === Save Final Model ===
+def save_and_push_model(model, processor, repo_id: str, token: str):
+    try:
+        model.save_pretrained(repo_id, safe_serialization=True)
+        processor.save_pretrained(repo_id)
+        model.push_to_hub(repo_id, token=token)
+        processor.push_to_hub(repo_id, token=token)
+        print("✅ Model pushed successfully")
+    except Exception as e:
+        print(f"❌ Failed to push model: {e}")
+
