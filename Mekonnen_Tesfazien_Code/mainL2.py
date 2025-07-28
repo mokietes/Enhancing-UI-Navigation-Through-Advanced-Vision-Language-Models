@@ -193,3 +193,7 @@ def save_and_push_model(model, processor, repo_id: str, token: str):
     except Exception as e:
         print(f"❌ Failed to push model: {e}")
 
+# Uncomment below to push to hub
+# save_and_push_model(model, processor, "Llama-3.2-11B-finetuned-waveUI-L2", HF_TOKEN)
+
+wandb.finish()
