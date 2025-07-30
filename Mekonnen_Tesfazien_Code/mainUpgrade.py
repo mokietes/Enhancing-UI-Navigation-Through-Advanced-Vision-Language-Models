@@ -74,3 +74,23 @@ def convert_to_conversation(sample):
     )
 
     dynamic_instruction = " ".join(instruction_parts)
+
+    return {
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": sample["image"]},
+                    {"type": "text", "text": global_instruction},
+                    {"type": "text", "text": dynamic_instruction},
+                ],
+            },
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": bbox},
+                ],
+            },
+        ]
+    }
+
