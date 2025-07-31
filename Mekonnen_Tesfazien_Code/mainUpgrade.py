@@ -94,3 +94,28 @@ def convert_to_conversation(sample):
         ]
     }
 
+# === Save and Push ===
+def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf: bool=True):
+    try:
+        model_name = f"{repo_id}-Second-Brain-Summarization"
+        print(f"Model name: {model_name}")
+
+        model.save_pretrained_merged(
+            model_name,
+            tokenizer,
+            save_method="merged_16bit",
+        )
+
+        if enable_hf:
+            api = HfApi()
+            user_info = api.whoami(token=HF_TOKEN)
+            huggingface_user = user_info["name"]
+            print(f"Current Hugging Face user: {huggingface_user}")
+
+            model.push_to_hub_merged(
+                f"{huggingface_user}/{model_name}",
+                tokenizer=tokenizer,
+                save_method="merged_16bit",
+                token=HF_TOKEN,
+            )
+
