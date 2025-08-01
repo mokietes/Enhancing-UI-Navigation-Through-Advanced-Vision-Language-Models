@@ -119,3 +119,20 @@ def save_and_push_model(model, tokenizer, repo_id: str, HF_TOKEN: str, enable_hf
                 token=HF_TOKEN,
             )
 
+            print("✅ Model and tokenizer pushed successfully!")
+        else:
+            print("Hugging Face upload disabled. Model saved locally.")
+        return True
+
+    except Exception as e:
+        print("❌ Error while saving or pushing model:")
+        traceback.print_exc()
+        return False
+
+# === Dataset Load ===
+dataset = load_dataset("parquet", data_files={
+    "train": os.path.join(dataset_path, "train-*.parquet"),
+    "validation": os.path.join(dataset_path, "validation-*.parquet"),
+    "test": os.path.join(dataset_path, "test-*.parquet"),
+})
+
