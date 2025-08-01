@@ -136,3 +136,20 @@ dataset = load_dataset("parquet", data_files={
     "test": os.path.join(dataset_path, "test-*.parquet"),
 })
 
+train_dataset = dataset["train"]
+val_dataset = dataset["validation"]
+test_dataset = dataset["test"]
+
+print("\nProcessing training dataset...")
+train_dataset = [convert_to_conversation(sample) for sample in tqdm(train_dataset, desc="Processing Train Data", unit="sample")]
+
+print("\nProcessing validation dataset...")
+val_dataset = [convert_to_conversation(sample) for sample in tqdm(val_dataset, desc="Processing Validation Data", unit="sample")]
+
+# === Load Model ===
+model, tokenizer = FastVisionModel.from_pretrained(
+    "unsloth/Llama-3.2-11B-Vision-Instruct",
+    load_in_4bit=True,
+    use_gradient_checkpointing="unsloth",
+)
+
