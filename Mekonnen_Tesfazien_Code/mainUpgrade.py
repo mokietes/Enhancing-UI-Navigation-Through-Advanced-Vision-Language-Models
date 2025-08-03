@@ -170,3 +170,21 @@ model = FastVisionModel.get_peft_model(
 
 FastVisionModel.for_training(model)
 
+# === Callbacks ===
+class SaveCheckpointCallback(TrainerCallback):
+    def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+        print(f"Saving checkpoint at step {state.global_step}")
+        model.save_pretrained(f"checkpoint-{state.global_step}")
+        tokenizer.save_pretrained(f"checkpoint-{state.global_step}")
+
+class WandBLoggingCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, **kwargs):
+        eval_metrics = kwargs.get("metrics", {})
+        eval_loss = eval_metrics.get("eval_loss", None)
+        if eval_loss is not None:
+            wandb.log({"epoch": state.epoch, "eval_loss": eval_loss})
+
+    def on_train_end(self, args, state, control, **kwargs):
+        train_loss = kwargs.get("train_loss", 0)
+        wandb.log({"train_loss": train_loss})
+
