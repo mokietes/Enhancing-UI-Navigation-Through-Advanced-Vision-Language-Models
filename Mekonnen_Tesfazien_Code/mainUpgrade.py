@@ -218,3 +218,23 @@ training_args = SFTConfig(
     save_total_limit=5,
     resume_from_checkpoint="./outputs/check",
 )
+
+# === Trainer ===
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    data_collator=UnslothVisionDataCollator(model, tokenizer),
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    args=training_args,
+    callbacks=[SaveCheckpointCallback(), WandBLoggingCallback()],
+)
+
+# === Train Model ===
+torch.cuda.empty_cache()
+torch.cuda.reset_max_memory_allocated()
+trainer.train(resume_from_checkpoint=True)
+
+# === Save Model ===
+repo_id = "Llama-3.2-11B-finetuned-waveUI"
+success = save_and_push_model(model, tokenizer, repo_id, HF_TOKEN)
