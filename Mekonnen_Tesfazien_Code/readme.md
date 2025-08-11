@@ -19,3 +19,25 @@ This repository contains training pipelines and evaluation scripts for fine-tuni
 ```
 
 ---
+
+## 🛠️ Setup Instructions
+
+### 1. Environment Setup
+
+#### Local
+```bash
+git clone https://github.com/mokietes/Visual-Data-Mining-AI-Model.git
+cd Visual-Data-Mining-AI-Model
+conda env create -f scripts/setup/environment.yml
+conda activate vt-spatial
+pip install -r scripts/setup/requirements.txt
+```
+
+#### HPC Cluster
+```bash
+module load cuda/11.8
+module load anaconda3/2023.03
+source scripts/hpc/gpu_activation.sh
+```
+
+---
