@@ -62,3 +62,57 @@ source scripts/hpc/gpu_activation.sh
 ```python
 from datasets import load_dataset
 dataset = load_dataset("miketes/Web-filtered-english-wave-ui-25k")
+```
+
+### Preprocessing
+```bash
+python src/data/preprocessing.py --input_path /path/to/raw --output_path /path/to/processed
+```
+
+---
+
+##  Training
+
+### A. LoRA Fine-Tuning (`main.py` / `mainUpgrade.py`)
+```bash
+python main.py
+```
+
+### B. Smooth L1 Loss Training (`L1LossTraining.py`)
+```bash
+python L1LossTraining.py
+```
+
+### C. L2 Loss Training (`mainL2.py`)
+```bash
+python mainL2.py
+```
+
+### D. Combined Loss with GIoU/L1/L2/SmoothL1 (`sfsuCluster.py`)
+```bash
+python sfsuCluster.py
+```
+
+---
+
+##  Evaluation & Visualization
+
+### Generate Evaluation Metrics
+```bash
+python src/evaluation/benchmark.py --model_path ./models/full --test_samples 100 --save_visualizations
+```
+
+### Visualize Bounding Box Predictions
+```bash
+python plottest.py
+```
+
+---
+
+##  Metrics
+
+- IoU (Intersection over Union)
+- Smooth L1 Loss
+- L2 Loss
+- Pixel-wise bounding box regression error
+
