@@ -116,3 +116,24 @@ python plottest.py
 - L2 Loss
 - Pixel-wise bounding box regression error
 
+All metrics are logged to Weights & Biases and optionally visualized using TensorBoard.
+
+---
+
+##  Model Upload
+
+All scripts provide a `save_and_push_model` function for uploading to Hugging Face Hub.
+
+```python
+save_and_push_model(model, processor, "your-repo-name", HF_TOKEN)
+```
+
+---
+
+##  HPC Workflow
+
+- Remote Jupyter: `bash scripts/hpc/jupyter_remote.sh`
+- Job Scheduling: `sbatch scripts/hpc/job_chain.sh`
+
+---
+
