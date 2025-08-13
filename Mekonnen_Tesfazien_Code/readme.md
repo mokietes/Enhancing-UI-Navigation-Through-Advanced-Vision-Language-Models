@@ -41,3 +41,24 @@ source scripts/hpc/gpu_activation.sh
 ```
 
 ---
+
+## 📦 Dependencies
+
+- Python 3.8+
+- PyTorch 2.0+
+- Hugging Face Transformers
+- Unsloth
+- WandB
+- TRL
+- tqdm
+- numpy
+- matplotlib
+
+---
+
+##  Dataset
+
+### Load Dataset
+```python
+from datasets import load_dataset
+dataset = load_dataset("miketes/Web-filtered-english-wave-ui-25k")
