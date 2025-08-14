@@ -137,3 +137,8 @@ save_and_push_model(model, processor, "your-repo-name", HF_TOKEN)
 
 ---
 
+##  Contact
+
+**Author:** Mokie Tesfazien  
+**Email:** mokietes@sfsu.edu  
+**Project Repo:** [https://github.com/mokietes/Enhancing-UI-Navigation-Through-Advanced-Vision-Language-Models](https://github.com/mokietes/Enhancing-UI-Navigation-Through-Advanced-Vision-Language-Models)
